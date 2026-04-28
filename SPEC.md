@@ -185,3 +185,34 @@ Congress members, foreign leaders, donors — AI models their likely responses.
 - Speech synthesis
 - Persistence
 - Replayability features
+
+## Implementation Status
+
+### Phase 1: Core Foundation ✅
+- [x] Game state model (GameState, Player, WorldState, Event, Decision, Actions)
+- [x] Basic UI shell (SwiftUI macOS app with sidebars, main area, toolbars)
+- [x] Phase transitions (preCampaign → campaign → primaries → convention → generalElection → transition → presidency → lameDuck → exited)
+- [x] Stub AI calls (MiniMaxService integration ready)
+
+### Phase 2: Simulation Engine ✅
+- [x] Economic model (GDP growth, unemployment, inflation tracking)
+- [x] Political model (approval rating, party unity, congressional support)
+- [x] Event system basics (lifecycle: resolve at 5 turns, remove at 10)
+- [x] Decision engine (player choices with risk/reward)
+
+### Phase 3: AI Integration ✅
+- [x] MiniMax service (MiniMaxService with consequence calculation)
+- [x] Consequence calculation (AI calculates multi-domain ripple effects)
+- [x] Event generation (AI generates phase-appropriate events)
+- [ ] Speech generation (TODO)
+- [ ] NPC behavior modeling (TODO)
+
+### Phase 4: Polish (in progress)
+- [x] Electoral map with 50 states and EV counting
+- [x] Approval trend chart (last 20 turns)
+- [x] Political capital gauge
+- [x] Command Center with 20+ actions
+- [x] Briefings inbox system
+- [ ] Speech synthesis (TODO)
+- [ ] Persistence (TODO) - Save/load game state
+- [ ] Replayability features (TODO)
