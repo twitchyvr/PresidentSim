@@ -1,0 +1,46 @@
+name: PresidentSim
+options:
+  bundleIdPrefix: com.presidentsim
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "15.0"
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    ENABLE_HARDENED_RUNTIME: YES
+    CODE_SIGN_IDENTITY: "-"
+    PRODUCT_NAME: "PresidentSim"
+
+targets:
+  PresidentSim:
+    type: application
+    platform: macOS
+    sources:
+      - path: Models/GameEnums.swift
+      - path: Models/Player.swift
+      - path: Models/WorldState.swift
+      - path: Models/Event.swift
+      - path: Models/GameState.swift
+      - path: Models/Actions.swift
+      - path: Engine/MiniMaxService.swift
+      - path: Engine/SimulationEngine.swift
+      - path: Engine/DebateEngine.swift
+      - path: Engine/CabinetSystem.swift
+      - path: Engine/InternationalRelationsEngine.swift
+      - path: Engine/DiplomacyConversationEngine.swift
+      - path: App/TutorialOverlay.swift
+      - path: Services/SpeechService.swift
+      - path: Services/PersistenceService.swift
+      - path: App/PresidentSimApp.swift
+      - path: Resources
+    settings:
+      base:
+        INFOPLIST_FILE: Resources/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.presidentsim.app
+        COMBINE_HIDPI_IMAGES: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks"
+        SWIFT_EMIT_LOC_STRINGS: YES
