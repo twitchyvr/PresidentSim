@@ -85,7 +85,9 @@ struct WorldState: Codable {
         let monthName = ["January", "February", "March", "April", "May", "June",
                         "July", "August", "September", "October", "November", "December"][monthIndex]
         let week = ((currentTurn - 1) % 13) + 1
-        return "\(monthName), Week \(week), \(currentYear)"
+        // Turns 1-52 = year 0, 53-104 = year 1, etc.
+        let displayYear = currentYear + (currentTurn - 1) / 52
+        return "\(monthName), Week \(week), \(displayYear)"
     }
 }
 

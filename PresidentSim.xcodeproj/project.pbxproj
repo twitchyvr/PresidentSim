@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -19,6 +19,7 @@
 		8508BDD0C9964DED2A0D8D00 /* TutorialOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A53337C843E4F32AA126297 /* TutorialOverlay.swift */; };
 		905C390063729DF16D25554B /* Player.swift in Sources */ = {isa = PBXBuildFile; fileRef = 083A2E87990E7BDAEFC1FAFC /* Player.swift */; };
 		A2B8E086CD80F7F1D75120A4 /* PersistenceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AADD1019C0AEFA9BD09B965 /* PersistenceService.swift */; };
+		D9164C0117D38076B9057BBD /* PresidentSimTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1364AA88D0E5F86036A854A5 /* PresidentSimTests.swift */; };
 		E208229E8572EDF7EAB6C834 /* SimulationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A5B5E1169B81ACD6398E59E /* SimulationEngine.swift */; };
 		E21DDB65A3C46855CBE6E31B /* DiplomacyConversationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E470309A4AC8F31B3EE62A64 /* DiplomacyConversationEngine.swift */; };
 		E35C45B87E9CBB62B76EE9B0 /* PresidentSimApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E0F5A7C5313E5F9702D042 /* PresidentSimApp.swift */; };
@@ -26,9 +27,20 @@
 		E894A14F26815360133E631C /* DebateEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C613C5CB30005718E43494AE /* DebateEngine.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		8CF283E17C024F21AF25AF97 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = EF07BBA65953A174299517B0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 10E02AC53403C42A128512D0;
+			remoteInfo = PresidentSim;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		083A2E87990E7BDAEFC1FAFC /* Player.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Player.swift; sourceTree = "<group>"; };
 		086155E2CB93693874F9B9DB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		1364AA88D0E5F86036A854A5 /* PresidentSimTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresidentSimTests.swift; sourceTree = "<group>"; };
 		1CF512D37511476967E16734 /* MiniMaxService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniMaxService.swift; sourceTree = "<group>"; };
 		2D82E2B1DC0AF69B4A874C0C /* CabinetSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CabinetSystem.swift; sourceTree = "<group>"; };
 		46719101FC6B6A67ADF4E40C /* GameState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameState.swift; sourceTree = "<group>"; };
@@ -44,6 +56,7 @@
 		C613C5CB30005718E43494AE /* DebateEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebateEngine.swift; sourceTree = "<group>"; };
 		CEA4395487F0EE731BE2373C /* SpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechService.swift; sourceTree = "<group>"; };
 		D4E0F5A7C5313E5F9702D042 /* PresidentSimApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresidentSimApp.swift; sourceTree = "<group>"; };
+		D80E40BFF4FD7D88A067D69A /* PresidentSimTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PresidentSimTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E470309A4AC8F31B3EE62A64 /* DiplomacyConversationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiplomacyConversationEngine.swift; sourceTree = "<group>"; };
 		E95DB1EB7704C031F77D7CA6 /* WorldState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldState.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -69,6 +82,14 @@
 				8A5B5E1169B81ACD6398E59E /* SimulationEngine.swift */,
 			);
 			path = Engine;
+			sourceTree = "<group>";
+		};
+		5AD1BB7148A54F0AA1C6FE21 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				1364AA88D0E5F86036A854A5 /* PresidentSimTests.swift */,
+			);
+			path = Tests;
 			sourceTree = "<group>";
 		};
 		5BCEFE82A250AB997ADE30EC /* Resources */ = {
@@ -97,6 +118,7 @@
 				C5CBEC59F212E29FF5089564 /* Models */,
 				5BCEFE82A250AB997ADE30EC /* Resources */,
 				7FE104DDF57CFE1CE28F164C /* Services */,
+				5AD1BB7148A54F0AA1C6FE21 /* Tests */,
 				9151AA7943CB704DAA871FE4 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -105,6 +127,7 @@
 			isa = PBXGroup;
 			children = (
 				4D35920D2306FC022F5ADE50 /* PresidentSim.app */,
+				D80E40BFF4FD7D88A067D69A /* PresidentSimTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -143,6 +166,24 @@
 			productReference = 4D35920D2306FC022F5ADE50 /* PresidentSim.app */;
 			productType = "com.apple.product-type.application";
 		};
+		F565A30723EA42432C110AB8 /* PresidentSimTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F5BC441AEF5F2A46A7AB7EBD /* Build configuration list for PBXNativeTarget "PresidentSimTests" */;
+			buildPhases = (
+				09DB63E24A16BDC3FAC3145D /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				946E28914A94E210A201E8F3 /* PBXTargetDependency */,
+			);
+			name = PresidentSimTests;
+			packageProductDependencies = (
+			);
+			productName = PresidentSimTests;
+			productReference = D80E40BFF4FD7D88A067D69A /* PresidentSimTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -169,6 +210,7 @@
 			projectRoot = "";
 			targets = (
 				10E02AC53403C42A128512D0 /* PresidentSim */,
+				F565A30723EA42432C110AB8 /* PresidentSimTests */,
 			);
 		};
 /* End PBXProject section */
@@ -185,6 +227,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		09DB63E24A16BDC3FAC3145D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D9164C0117D38076B9057BBD /* PresidentSimTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		1D6E12EAD6249F099D60B142 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -210,7 +260,33 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		946E28914A94E210A201E8F3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 10E02AC53403C42A128512D0 /* PresidentSim */;
+			targetProxy = 8CF283E17C024F21AF25AF97 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		117C7E9C4A517DC700939043 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.presidentsim.tests;
+				PRODUCT_NAME = PresidentSimTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PresidentSim.app/Contents/MacOS/PresidentSim";
+			};
+			name = Debug;
+		};
 		2E94C3A4190ACF604C19177F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -223,6 +299,24 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 			};
 			name = Debug;
+		};
+		6F40274CF318E55522554B2E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.presidentsim.tests;
+				PRODUCT_NAME = PresidentSimTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PresidentSim.app/Contents/MacOS/PresidentSim";
+			};
+			name = Release;
 		};
 		74A750195A382EF1463A1897 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -377,6 +471,15 @@
 			buildConfigurations = (
 				2E94C3A4190ACF604C19177F /* Debug */,
 				94FD47154DC38290931FAD80 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F5BC441AEF5F2A46A7AB7EBD /* Build configuration list for PBXNativeTarget "PresidentSimTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				117C7E9C4A517DC700939043 /* Debug */,
+				6F40274CF318E55522554B2E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
