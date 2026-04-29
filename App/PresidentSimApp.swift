@@ -69,7 +69,7 @@ struct ContentView: View {
         VStack(spacing: 0) {
             // News ticker
             if !newsTickerText.isEmpty {
-                NewsTickerView(text: newsTickerText)
+                NewsTickerView(text: newsTickerText, trendingTopic: engine.gameState.world.trendingTopic)
             }
 
             // Top bar
@@ -181,7 +181,7 @@ struct ContentView: View {
             loadAPIKeyIfNeeded()
             updateNewsTicker()
         }
-        .onChange(of: engine.gameState.world.currentNarrative) { _, _ in
+        .onChange(of: engine.gameState.world.actionResultsThisTurn.count) { _, _ in
             updateNewsTicker()
         }
     }
@@ -253,9 +253,9 @@ struct ContentView: View {
     }
 
     private func loadAPIKeyIfNeeded() {
-        if let envPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("GitRepos/Overlord-v2/.env").path as String?,
-           let content = try? String(contentsOfFile: envPath),
+        let envPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".PresidentSim/env").path
+        if let content = try? String(contentsOfFile: envPath),
            let keyRange = content.range(of: "MINIMAX_API_KEY=") {
 
             let start = keyRange.upperBound
@@ -1008,7 +1008,8 @@ struct SituationFeedItem: View {
 struct DecisionCard: View {
     @EnvironmentObject var engine: SimulationEngine
     let decision: Decision
-    @State private var selectedIndex: Int? = nil
+    @State private var pendingIndex: Int? = nil
+    @State private var showConfirmation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -1022,10 +1023,8 @@ struct DecisionCard: View {
 
             ForEach(Array(decision.options.enumerated()), id: \.element.id) { index, option in
                 Button(action: {
-                    selectedIndex = index
-                    Task {
-                        await engine.makeDecision(decision, choiceIndex: index)
-                    }
+                    pendingIndex = index
+                    showConfirmation = true
                 }) {
                     HStack {
                         Text(option.text)
@@ -1039,10 +1038,40 @@ struct DecisionCard: View {
                         }
                     }
                     .padding(6)
-                    .background(selectedIndex == index ? Color.accentColor.opacity(0.3) : Color.clear)
+                    .background(pendingIndex == index ? Color.accentColor.opacity(0.3) : Color.clear)
                     .cornerRadius(4)
                 }
                 .buttonStyle(.plain)
+            }
+
+            if showConfirmation, let idx = pendingIndex {
+                VStack(spacing: 6) {
+                    Text("Are you sure?")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+
+                    HStack(spacing: 8) {
+                        Button("Confirm") {
+                            Task {
+                                await engine.makeDecision(decision, choiceIndex: idx)
+                            }
+                            showConfirmation = false
+                            pendingIndex = nil
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+
+                        Button("Cancel", role: .cancel) {
+                            showConfirmation = false
+                            pendingIndex = nil
+                        }
+                        .controlSize(.small)
+                    }
+                }
+                .padding(8)
+                .background(Color(NSColor.selectedContentBackgroundColor).opacity(0.15))
+                .cornerRadius(6)
             }
         }
         .padding(8)
@@ -1836,6 +1865,7 @@ struct EconomicIndicator: View {
 
 struct NewsTickerView: View {
     let text: String
+    let trendingTopic: String
     @State private var offset: CGFloat = 0
 
     var body: some View {
@@ -1855,16 +1885,20 @@ struct NewsTickerView: View {
                     .foregroundColor(.secondary)
                     .lineLimit(1)
 
-                Text("  •  " + text)
+                Text("  •  ")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                Text(trendingTopic)
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
             }
             .offset(x: offset)
             .onAppear {
-                let textWidth = text.count * 7
-                withAnimation(.linear(duration: Double(textWidth) / 30).repeatForever(autoreverses: false)) {
-                    offset = -CGFloat(textWidth + 100)
+                let fullWidth = (text.count + trendingTopic.count) * 7
+                withAnimation(.linear(duration: Double(fullWidth) / 30).repeatForever(autoreverses: false)) {
+                    offset = -CGFloat(fullWidth + 100)
                 }
             }
         }
@@ -2476,6 +2510,7 @@ struct ActionCard: View {
     let isDisabled: Bool
     let cooldownRemaining: Int
     let onPerform: () -> Void
+    @State private var isLoading = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -2484,7 +2519,7 @@ struct ActionCard: View {
                     Text(action.name)
                         .font(.subheadline)
                         .fontWeight(.medium)
-                        .foregroundColor(isDisabled ? .secondary : .primary)
+                        .foregroundColor((isDisabled || isLoading) ? .secondary : .primary)
 
                     Text(action.category.rawValue)
                         .font(.caption2)
@@ -2494,11 +2529,17 @@ struct ActionCard: View {
                 Spacer()
 
                 Button(action.name == "Make Speech" ? "Write Speech" : "Perform") {
+                    guard !isLoading else { return }
+                    isLoading = true
                     onPerform()
+                    // Brief guard period to prevent double-tap
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        isLoading = false
+                    }
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .disabled(isDisabled)
+                .disabled(isDisabled || isLoading)
             }
 
             Text(action.description)

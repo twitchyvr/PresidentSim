@@ -29,7 +29,7 @@ xcodebuild -project PresidentSim.xcodeproj -scheme PresidentSim -configuration D
 
 ## AI Integration (Optional)
 
-For AI-driven events and consequences, create `~/. PresidentSim/env` with your MiniMax API key:
+For AI-driven events and consequences, create `~/.PresidentSim/env` with your MiniMax API key:
 
 ```
 MINIMAX_API_KEY=your_key_here
