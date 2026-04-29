@@ -39,6 +39,7 @@ struct ContentView: View {
     @State private var newsTickerText = ""
     @State private var showCommandCenter = false
     @State private var showBriefings = false
+    @State private var showSaveLoad = false
     @State private var briefings: [Briefing] = []
 
     var body: some View {
@@ -80,6 +81,17 @@ struct ContentView: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundColor(showBriefings ? .orange : .blue)
+
+                    Divider().frame(height: 16)
+
+                    Button(action: { showSaveLoad.toggle() }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "square.and.arrow.down.on.square")
+                            Text("Save/Load")
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundColor(showSaveLoad ? .orange : .blue)
                 }
 
                 Spacer()
@@ -138,6 +150,9 @@ struct ContentView: View {
         .sheet(isPresented: $showBriefings) {
             BriefingsView(briefings: $briefings)
                 .environmentObject(engine)
+        }
+        .sheet(isPresented: $showSaveLoad) {
+            SaveLoadView(engine: engine)
         }
         .onAppear {
             loadAPIKeyIfNeeded()
@@ -2042,25 +2057,62 @@ struct CommandCenterView: View {
     }
 
     private func performAction(_ action: GameAction) {
-        // Apply action effects immediately (simplified - AI would calculate consequences)
+        // Validate resource costs first
+        for cost in action.costs {
+            switch cost.type {
+            case .politicalCapital:
+                if engine.gameState.resources.politicalCapital < cost.amount {
+                    engine.gameState.world.currentNarrative = "Not enough Political Capital for: \(action.name)"
+                    return
+                }
+            case .money:
+                if engine.gameState.resources.campaignFunds < cost.amount {
+                    engine.gameState.world.currentNarrative = "Not enough Campaign Funds for: \(action.name)"
+                    return
+                }
+            case .mediaCycle:
+                if engine.gameState.resources.mediaCycles < Int(cost.amount) {
+                    engine.gameState.world.currentNarrative = "Not enough Media Cycles for: \(action.name)"
+                    return
+                }
+            case .time:
+                break // Time is just turns, always available
+            }
+        }
+
+        // Deduct costs
+        for cost in action.costs {
+            switch cost.type {
+            case .politicalCapital:
+                engine.gameState.resources.politicalCapital -= cost.amount
+            case .money:
+                engine.gameState.resources.campaignFunds -= cost.amount
+            case .mediaCycle:
+                engine.gameState.resources.mediaCycles -= Int(cost.amount)
+            case .time:
+                break
+            }
+        }
+
+        // Apply action effects (clamped to valid ranges)
         for (key, value) in action.effects {
             switch key {
             case "mediaFavorability":
-                engine.gameState.world.mediaFavorability += value
+                engine.gameState.world.mediaFavorability = max(0, min(100, engine.gameState.world.mediaFavorability + value))
             case "approvalRating":
                 engine.gameState.world.approvalRating = max(0, min(100, engine.gameState.world.approvalRating + value))
             case "momentum":
-                engine.gameState.campaignMomentum += value
+                engine.gameState.campaignMomentum = max(-10, min(10, engine.gameState.campaignMomentum + value))
             case "congressionalSupport":
                 engine.gameState.world.congressionalSupport = max(0, min(100, engine.gameState.world.congressionalSupport + value))
             case "partyUnityScore":
                 engine.gameState.world.partyUnityScore = max(0, min(100, engine.gameState.world.partyUnityScore + value))
             case "campaignFunds":
-                engine.gameState.resources.campaignFunds += value
+                engine.gameState.resources.campaignFunds = max(0, engine.gameState.resources.campaignFunds + value)
             case "globalInfluence":
-                engine.gameState.world.globalInfluence += value
+                engine.gameState.world.globalInfluence = max(0, min(100, engine.gameState.world.globalInfluence + value))
             case "statePolling":
-                engine.gameState.popularVoteMargin += value
+                engine.gameState.popularVoteMargin = max(-20, min(20, engine.gameState.popularVoteMargin + value))
             default:
                 break
             }
@@ -2394,6 +2446,145 @@ struct BriefingCard: View {
         case 3: return .yellow
         default: return .green
         }
+    }
+}
+
+// MARK: - Save/Load View
+struct SaveLoadView: View {
+    @ObservedObject var engine: SimulationEngine
+    @Environment(\.dismiss) var dismiss
+    @State private var saves: [SaveMetadata] = []
+    @State private var showLoadError = false
+    @State private var loadErrorMessage = ""
+    @State private var saveName = ""
+    @State private var isSaving = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Save / Load Game")
+                    .font(.headline)
+                Spacer()
+                Button("Done") {
+                    dismiss()
+                }
+            }
+            .padding()
+            .background(Color(NSColor.windowBackgroundColor))
+
+            Divider()
+
+            TabView {
+                // Save Tab
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Save Current Game")
+                        .font(.headline)
+
+                    TextField("Save name (optional)", text: $saveName)
+                        .textFieldStyle(.roundedBorder)
+
+                    Button(action: saveGame) {
+                        HStack {
+                            Image(systemName: "square.and.arrow.down")
+                            Text(isSaving ? "Saving..." : "Save Game")
+                        }
+                    }
+                    .disabled(isSaving)
+
+                    Spacer()
+                }
+                .padding()
+                .tabItem { Label("Save", systemImage: "square.and.arrow.down") }
+
+                // Load Tab
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Load Saved Game")
+                        .font(.headline)
+
+                    if saves.isEmpty {
+                        VStack {
+                            Spacer()
+                            Text("No saved games found")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                        }
+                    } else {
+                        List(saves, id: \.filename) { save in
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text(save.displayName)
+                                        .fontWeight(.medium)
+                                    Text(save.formattedDate)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Button("Load") {
+                                    loadGame(save.filename)
+                                }
+                                Button(role: .destructive) {
+                                    deleteSave(save.filename)
+                                } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                }
+                .padding()
+                .tabItem { Label("Load", systemImage: "square.and.arrow.up") }
+            }
+            .padding()
+        }
+        .frame(width: 450, height: 400)
+        .onAppear {
+            refreshSaves()
+        }
+        .alert("Load Error", isPresented: $showLoadError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(loadErrorMessage)
+        }
+    }
+
+    private func saveGame() {
+        isSaving = true
+        let name = saveName.isEmpty ? nil : saveName
+        do {
+            try engine.saveGameAs(name ?? "autosave")
+            saveName = ""
+            refreshSaves()
+        } catch {
+            loadErrorMessage = "Failed to save: \(error.localizedDescription)"
+        }
+        isSaving = false
+    }
+
+    private func loadGame(_ filename: String) {
+        do {
+            try engine.loadGame(filename)
+            dismiss()
+        } catch {
+            loadErrorMessage = "Failed to load: \(error.localizedDescription)"
+            showLoadError = true
+        }
+    }
+
+    private func deleteSave(_ filename: String) {
+        do {
+            try engine.deleteSave(filename)
+            refreshSaves()
+        } catch {
+            loadErrorMessage = "Failed to delete: \(error.localizedDescription)"
+            showLoadError = true
+        }
+    }
+
+    private func refreshSaves() {
+        saves = engine.listSavedGames()
     }
 }
 

@@ -213,6 +213,6 @@ Congress members, foreign leaders, donors — AI models their likely responses.
 - [x] Political capital gauge
 - [x] Command Center with 20+ actions
 - [x] Briefings inbox system
+- [x] Persistence - Save/load game state
 - [ ] Speech synthesis (TODO)
-- [ ] Persistence (TODO) - Save/load game state
 - [ ] Replayability features (TODO)

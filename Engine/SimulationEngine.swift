@@ -11,6 +11,8 @@ class SimulationEngine: ObservableObject {
 
     private(set) var aiBrain: MiniMaxService?
     private let useAI: Bool
+    private let persistence = PersistenceService()
+    private var currentSaveName: String?
 
     init(useAI: Bool = true) {
         self.gameState = GameState()
@@ -32,6 +34,40 @@ class SimulationEngine: ObservableObject {
             title: "Journey Begins",
             description: "\(player.name) announces presidential candidacy"
         ))
+        currentSaveName = nil
+    }
+
+    // MARK: - Persistence
+
+    func saveGame() throws {
+        let name = currentSaveName ?? "autosave_\(Date().timeIntervalSince1970).json"
+        try persistence.save(gameState, filename: name)
+        currentSaveName = name
+    }
+
+    func saveGameAs(_ filename: String) throws {
+        try persistence.save(gameState, filename: filename)
+        currentSaveName = filename
+    }
+
+    func loadGame(_ filename: String) throws {
+        gameState = try persistence.load(filename: filename)
+        currentSaveName = filename
+    }
+
+    func listSavedGames() -> [SaveMetadata] {
+        persistence.listSaves()
+    }
+
+    func deleteSave(_ filename: String) throws {
+        try persistence.delete(filename: filename)
+        if currentSaveName == filename {
+            currentSaveName = nil
+        }
+    }
+
+    func hasSavedGames() -> Bool {
+        !persistence.listSaves().isEmpty
     }
 
     func advanceTurn() async {
@@ -70,6 +106,9 @@ class SimulationEngine: ObservableObject {
 
         // 6. Check for game-ending conditions
         checkGameEndConditions()
+
+        // 7. Clamp all resources to valid ranges (final safety net)
+        clampResources()
 
         // Ensure minimum visible processing time for UX
         let elapsed = Date().timeIntervalSince(startTime)
@@ -157,6 +196,9 @@ class SimulationEngine: ObservableObject {
     }
 
     func declareCandidacy() async {
+        // Guard: can't declare if already in campaign or later
+        guard gameState.phase == .preCampaign else { return }
+
         gameState.phase = .campaign
         gameState.world.currentNarrative = "The campaign begins. \(gameState.player.name) officially announces their candidacy."
         await generateInitialDecisions()
@@ -258,6 +300,13 @@ class SimulationEngine: ObservableObject {
             $0.title == selected.0 && !$0.isResolved
         }
         guard !alreadyHasSimilar else { return }
+
+        // Prevent same category from firing more than twice in last 5 turns
+        let recentCategoryCount = gameState.activeEvents.filter {
+            $0.category == selected.2 && !$0.isResolved &&
+            gameState.world.currentTurn - $0.turnOccurred < 5
+        }.count
+        guard recentCategoryCount < 2 else { return }
 
         let event = GameEvent(
             title: selected.0,
@@ -406,7 +455,10 @@ class SimulationEngine: ObservableObject {
                 gameState.transitionToNextPhase()
             }
         case .generalElection:
-            // Transition after election
+            // Auto-win if electoral votes >= 270
+            if gameState.electoralVotes >= 270 {
+                gameState.transitionToNextPhase()
+            }
             break
         case .presidency:
             // Move to lame duck after 8 years (assume 8 * 52 turns)
@@ -487,15 +539,43 @@ class SimulationEngine: ObservableObject {
         for (key, value) in option.expectedBenefits {
             switch key {
             case "approvalRating":
-                gameState.world.approvalRating += value * multiplier
+                gameState.world.approvalRating = max(0, min(100, gameState.world.approvalRating + value * multiplier))
             case "partyUnity":
-                gameState.world.partyUnityScore += value * multiplier
+                gameState.world.partyUnityScore = max(0, min(100, gameState.world.partyUnityScore + value * multiplier))
             case "campaignMomentum":
-                gameState.campaignMomentum += value * multiplier
+                gameState.campaignMomentum = max(-10, min(10, gameState.campaignMomentum + value * multiplier))
             default:
                 break
             }
         }
+    }
+
+    private func clampResources() {
+        // Clamp all mutable resources to valid ranges
+        gameState.resources.politicalCapital = max(0, min(100, gameState.resources.politicalCapital))
+        gameState.resources.campaignFunds = max(0, gameState.resources.campaignFunds)
+        gameState.resources.mediaCycles = max(0, min(10, gameState.resources.mediaCycles))
+        gameState.campaignMomentum = max(-10, min(10, gameState.campaignMomentum))
+
+        // World state clamps
+        gameState.world.approvalRating = max(0, min(100, gameState.world.approvalRating))
+        gameState.world.partyUnityScore = max(0, min(100, gameState.world.partyUnityScore))
+        gameState.world.congressionalSupport = max(0, min(100, gameState.world.congressionalSupport))
+        gameState.world.mediaFavorability = max(0, min(100, gameState.world.mediaFavorability))
+        gameState.world.donorSatisfaction = max(0, min(100, gameState.world.donorSatisfaction))
+        gameState.world.globalInfluence = max(0, min(100, gameState.world.globalInfluence))
+        gameState.world.internationalPrestige = max(0, min(100, gameState.world.internationalPrestige))
+
+        // Economic bounds
+        gameState.world.gdpGrowth = max(-10, min(15, gameState.world.gdpGrowth))
+        gameState.world.unemployment = max(0, min(25, gameState.world.unemployment))
+        gameState.world.inflation = max(0, min(20, gameState.world.inflation))
+        gameState.world.stockMarketIndex = max(0, gameState.world.stockMarketIndex)
+        gameState.world.consumerConfidence = max(0, min(100, gameState.world.consumerConfidence))
+
+        // Electoral bounds
+        gameState.electoralVotes = max(0, min(538, gameState.electoralVotes))
+        gameState.popularVoteMargin = max(-20, min(20, gameState.popularVoteMargin))
     }
 }
 
