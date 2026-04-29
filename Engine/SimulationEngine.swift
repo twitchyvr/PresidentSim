@@ -349,6 +349,94 @@ class SimulationEngine: ObservableObject {
 
         // Show feedback
         gameState.world.actionResultsThisTurn.append("You used: \(action.name)")
+
+        // Model NPC reactions asynchronously (fire-and-forget)
+        applyNPCReactions(for: action)
+    }
+
+    // MARK: - NPC Behavior Modeling
+
+    /// Determines which NPC types are relevant to a given action category
+    private func relevantNPCTypes(for action: GameAction) -> [String] {
+        switch action.category {
+        case .communication:
+            return ["media", "congress"]
+        case .travel:
+            return ["donor"]
+        case .diplomatic:
+            return ["foreign_leader"]
+        case .executive:
+            return ["congress", "donor"]
+        case .political:
+            return ["congress", "donor", "media"]
+        case .personnel:
+            return ["congress", "donor"]
+        }
+    }
+
+    /// Fires NPC behavior modeling for all relevant NPC types after an action is taken.
+    /// Updates world state with mood changes and appends reaction narratives.
+    private func applyNPCReactions(for action: GameAction) {
+        guard let ai = aiBrain else { return }
+
+        let npcTypes = relevantNPCTypes(for: action)
+        let gameSummary = gameState.toAISummary()
+
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
+
+            for npcType in npcTypes {
+                let input = MiniMaxService.NPCBehaviorInput(
+                    npcType: npcType,
+                    npcSpecifics: self.npcSpecifics(for: npcType),
+                    gameState: gameSummary,
+                    playerAction: action.name
+                )
+
+                do {
+                    let output = try await ai.modelNPCBehavior(input: input)
+                    self.applyNPCMoodChange(npcType: npcType, moodChange: output.moodChange)
+                    if !output.narrative.isEmpty {
+                        self.gameState.world.actionResultsThisTurn.append(output.narrative)
+                    }
+                } catch {
+                    // NPC modeling failed — skip silently, action already succeeded
+                }
+            }
+        }
+    }
+
+    /// Returns NPC-specific details for the behavior prompt
+    private func npcSpecifics(for npcType: String) -> String {
+        switch npcType {
+        case "congress":
+            return "Congressional support: \(Int(gameState.world.congressionalSupport))%, Party unity: \(Int(gameState.world.partyUnityScore))%"
+        case "donor":
+            return "Donor satisfaction: \(Int(gameState.world.donorSatisfaction))%, Campaign funds available: $\(Int(gameState.resources.campaignFunds))K"
+        case "media":
+            return "Media favorability: \(Int(gameState.world.mediaFavorability))%, Trending topic: \(gameState.world.trendingTopic)"
+        case "foreign_leader":
+            return "Global influence: \(Int(gameState.world.globalInfluence))%, Key allies: UK, France, Germany"
+        default:
+            return ""
+        }
+    }
+
+    /// Applies an NPC's mood change to the appropriate WorldState field
+    private func applyNPCMoodChange(npcType: String, moodChange: Double) {
+        let change = moodChange // clamp if needed
+        switch npcType {
+        case "congress":
+            gameState.world.congressionalSupport = max(0, min(100, gameState.world.congressionalSupport + change))
+        case "donor":
+            gameState.world.donorSatisfaction = max(0, min(100, gameState.world.donorSatisfaction + change))
+        case "media":
+            gameState.world.mediaFavorability = max(0, min(100, gameState.world.mediaFavorability + change))
+        case "foreign_leader":
+            gameState.world.globalInfluence = max(0, min(100, gameState.world.globalInfluence + change))
+        default:
+            break
+        }
     }
 
     func makeDecision(_ decision: Decision, choiceIndex: Int) async {
