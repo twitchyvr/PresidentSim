@@ -1275,6 +1275,19 @@ struct PreCampaignView: View {
 
     var body: some View {
         VStack(spacing: 24) {
+            // Phase header
+            HStack {
+                Text(engine.gameState.phase.rawValue.uppercased())
+                    .font(.headline)
+                    .foregroundColor(.playerAccent)
+                Text("•")
+                    .foregroundColor(.secondary)
+                Text("Turn \(engine.gameState.world.currentTurn)")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+
             Text("Your Journey to the White House")
                 .font(.title)
 
@@ -1284,16 +1297,29 @@ struct PreCampaignView: View {
                 .frame(maxWidth: 500)
 
             if engine.gameState.player.name == "Player" {
-                Text("Configure your candidate in the New Game setup")
-                    .foregroundColor(.secondary)
-            } else {
-                Button("Announce Candidacy") {
-                    Task {
-                        await engine.declareCandidacy()
-                    }
+                VStack(spacing: 8) {
+                    Text("Configure your candidate in the New Game setup")
+                        .foregroundColor(.secondary)
+                    Text("Click 'New Game' in the toolbar to begin")
+                        .font(.caption)
+                        .foregroundColor(.tipAccent)
                 }
-                .buttonStyle(.borderedProminent)
-                .font(.headline)
+            } else {
+                VStack(spacing: 12) {
+                    Button("Announce Candidacy") {
+                        Task {
+                            await engine.declareCandidacy()
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .font(.headline)
+
+                    Text("This starts the campaign trail. Your first primary debates and fundraising calls will begin.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 400)
+                }
             }
         }
         .padding()
@@ -1360,6 +1386,19 @@ struct ConventionView: View {
 
     var body: some View {
         VStack(spacing: 16) {
+            // Phase header
+            HStack {
+                Text(engine.gameState.phase.rawValue.uppercased())
+                    .font(.headline)
+                    .foregroundColor(.playerAccent)
+                Text("•")
+                    .foregroundColor(.secondary)
+                Text("Turn \(engine.gameState.world.currentTurn)")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+
             Text("National Convention")
                 .font(.title)
 
@@ -1367,10 +1406,16 @@ struct ConventionView: View {
                 .foregroundColor(.secondary)
 
             if engine.gameState.chosenVP == nil {
-                Text("Select a Vice Presidential running mate")
-                    .font(.headline)
-
                 VStack(spacing: 8) {
+                    Text("Select a Vice Presidential running mate")
+                        .font(.headline)
+
+                    Text("Your VP choice affects voter demographics, party factions, and governing style.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 400)
+
                     ForEach(["Senator Maria Santos", "Governor John Davis", "Mayor Lisa Chen"], id: \.self) { name in
                         Button(name) {
                             engine.selectVP(name)
@@ -1392,6 +1437,19 @@ struct ElectionView: View {
 
     var body: some View {
         VStack(spacing: 16) {
+            // Phase header
+            HStack {
+                Text(engine.gameState.phase.rawValue.uppercased())
+                    .font(.headline)
+                    .foregroundColor(.playerAccent)
+                Text("•")
+                    .foregroundColor(.secondary)
+                Text("Turn \(engine.gameState.world.currentTurn)")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+
             Text("General Election")
                 .font(.title)
 
@@ -1710,6 +1768,19 @@ struct TransitionView: View {
 
     var body: some View {
         VStack(spacing: 16) {
+            // Phase header
+            HStack {
+                Text(engine.gameState.phase.rawValue.uppercased())
+                    .font(.headline)
+                    .foregroundColor(.playerAccent)
+                Text("•")
+                    .foregroundColor(.secondary)
+                Text("Turn \(engine.gameState.world.currentTurn)")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+
             Text("Transition Period")
                 .font(.title)
 
