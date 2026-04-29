@@ -10,6 +10,8 @@
   - Or re-throw
 - Empty `catch` blocks are forbidden. They hide failures from operators and users.
 - `try?` is acceptable only for operations where failure is benign (e.g., JSON parse with fallback).
+- **All external API calls must have a timeout.** Use `request.timeoutInterval = 30` on URLRequests. No indefinite hangs.
+- **All @Published error state must be observed in the UI.** If a class sets `lastError`, the view must display it.
 
 ## Color System
 - **Always use semantic Color tokens** from the `Color` extension (defined at line 42 of `PresidentSimApp.swift`):
