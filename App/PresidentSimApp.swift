@@ -100,6 +100,28 @@ struct ContentView: View {
                 NewsTickerView(text: newsTickerText, trendingTopic: engine.gameState.world.trendingTopic)
             }
 
+            // AI error banner
+            if let error = engine.lastError {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.danger)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.danger)
+                    Spacer()
+                    Button(action: { engine.lastError = nil }) {
+                        Image(systemName: "xmark")
+                            .font(.caption)
+                            .foregroundColor(.danger)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("errorBanner.dismiss")
+                }
+                .padding(8)
+                .background(Color.danger.opacity(0.1))
+                .accessibilityIdentifier("errorBanner")
+            }
+
             // Top bar
             HStack {
                 Text("PRESIDENT SIM")
@@ -2799,6 +2821,7 @@ struct BriefingCard: View {
             .cornerRadius(8)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("briefingCard.\(briefing.id.uuidString.prefix(8))")
     }
 
     private var urgencyColor: Color {
