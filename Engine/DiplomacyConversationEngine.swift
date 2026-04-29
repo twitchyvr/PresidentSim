@@ -81,16 +81,10 @@ enum LeaderEmotion: String, Codable {
 }
 
 class DiplomacyConversationEngine: ObservableObject {
-    private let speechService: SpeechService
-
     @Published var currentConversation: DiplomaticExchange?
     @Published var conversationHistory: [DiplomaticExchange] = []
     @Published var isProcessing: Bool = false
     @Published var isSpeaking: Bool = false
-
-    init() {
-        self.speechService = SpeechService()
-    }
 
     // MARK: - Main Entry Point
 
@@ -408,7 +402,7 @@ class DiplomacyConversationEngine: ObservableObject {
     func speakResponse(_ exchange: DiplomaticExchange) {
         isSpeaking = true
 
-        speechService.speak(
+        SpeechService.shared.speak(
             exchange.leaderResponse,
             rate: exchange.leaderEmotion.speechRate,
             voice: voiceForCountry(exchange.countryName)
@@ -424,7 +418,7 @@ class DiplomacyConversationEngine: ObservableObject {
     }
 
     func stopSpeaking() {
-        speechService.stop()
+        SpeechService.shared.stop()
         isSpeaking = false
     }
 
