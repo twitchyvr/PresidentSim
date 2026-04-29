@@ -2048,7 +2048,11 @@ struct CommandCenterView: View {
             ScrollView {
                 LazyVStack(spacing: 8) {
                     ForEach(filteredActions) { action in
-                        ActionCard(action: action) {
+                        ActionCard(
+                            action: action,
+                            isDisabled: !isActionAvailable(action),
+                            cooldownRemaining: cooldownRemaining(for: action)
+                        ) {
                             performAction(action)
                         }
                     }
@@ -2091,86 +2095,30 @@ struct CommandCenterView: View {
     }
 
     private func performAction(_ action: GameAction) {
-        // Validate resource costs first
-        for cost in action.costs {
-            switch cost.type {
-            case .politicalCapital:
-                if engine.gameState.resources.politicalCapital < cost.amount {
-                    engine.gameState.world.currentNarrative = "Not enough Political Capital for: \(action.name)"
-                    return
-                }
-            case .money:
-                if engine.gameState.resources.campaignFunds < cost.amount {
-                    engine.gameState.world.currentNarrative = "Not enough Campaign Funds for: \(action.name)"
-                    return
-                }
-            case .mediaCycle:
-                if engine.gameState.resources.mediaCycles < Int(cost.amount) {
-                    engine.gameState.world.currentNarrative = "Not enough Media Cycles for: \(action.name)"
-                    return
-                }
-            case .time:
-                break // Time is just turns, always available
+        // Guard: check if action can be performed
+        if !engine.canPerformAction(action) {
+            if engine.cooldownRemaining(for: action) > 0 {
+                engine.gameState.world.currentNarrative = "\(action.name) is on cooldown."
             }
-        }
-
-        // Deduct costs
-        for cost in action.costs {
-            switch cost.type {
-            case .politicalCapital:
-                engine.gameState.resources.politicalCapital -= cost.amount
-            case .money:
-                engine.gameState.resources.campaignFunds -= cost.amount
-            case .mediaCycle:
-                engine.gameState.resources.mediaCycles -= Int(cost.amount)
-            case .time:
-                break
-            }
-        }
-
-        // Apply action effects (clamped to valid ranges)
-        for (key, value) in action.effects {
-            switch key {
-            case "mediaFavorability":
-                engine.gameState.world.mediaFavorability = max(0, min(100, engine.gameState.world.mediaFavorability + value))
-            case "approvalRating":
-                engine.gameState.world.approvalRating = max(0, min(100, engine.gameState.world.approvalRating + value))
-            case "momentum":
-                engine.gameState.campaignMomentum = max(-10, min(10, engine.gameState.campaignMomentum + value))
-            case "congressionalSupport":
-                engine.gameState.world.congressionalSupport = max(0, min(100, engine.gameState.world.congressionalSupport + value))
-            case "partyUnityScore":
-                engine.gameState.world.partyUnityScore = max(0, min(100, engine.gameState.world.partyUnityScore + value))
-            case "campaignFunds":
-                engine.gameState.resources.campaignFunds = max(0, engine.gameState.resources.campaignFunds + value)
-            case "globalInfluence":
-                engine.gameState.world.globalInfluence = max(0, min(100, engine.gameState.world.globalInfluence + value))
-            case "statePolling":
-                engine.gameState.popularVoteMargin = max(-20, min(20, engine.gameState.popularVoteMargin + value))
-            case "opponentPolling":
-                engine.gameState.opponentPolling = max(0, min(100, engine.gameState.opponentPolling + value))
-            case "cabinetSatisfaction":
-                engine.gameState.cabinetSatisfaction = max(0, min(100, engine.gameState.cabinetSatisfaction + value))
-            case "relationshipTarget":
-                // relationshipTarget is handled per-country in diplomatic actions; generic fallback here
-                break
-            default:
-                break
-            }
-        }
-
-        // Show brief feedback
-        engine.gameState.world.currentNarrative = "You used: \(action.name)"
-
-        // For "Make Speech", open the speech editor sheet instead of immediate delivery
-        if action.name == "Make Speech" {
-            // Costs already deducted above; just set up the editor
-            speechText = "My fellow Americans, we stand at a pivotal moment in our nation's history. Together, we will build a stronger economy, unite our people, and secure a brighter future for generations to come."
-            isEditingSpeech = true
             return
         }
 
-        // Sheet stays open — user can perform multiple actions or click "Done"
+        // Let engine handle cost deduction, effects, and cooldown
+        engine.performAction(action)
+
+        // Special case: "Make Speech" opens the editor
+        if action.name == "Make Speech" {
+            speechText = "My fellow Americans, we stand at a pivotal moment in our nation's history. Together, we will build a stronger economy, unite our people, and secure a brighter future for generations to come."
+            isEditingSpeech = true
+        }
+    }
+
+    private func isActionAvailable(_ action: GameAction) -> Bool {
+        engine.canPerformAction(action)
+    }
+
+    private func cooldownRemaining(for action: GameAction) -> Int {
+        engine.cooldownRemaining(for: action)
     }
 
     private func generateAISpeech() {
@@ -2406,6 +2354,8 @@ struct SpeechEditorSheet: View {
 
 struct ActionCard: View {
     let action: GameAction
+    let isDisabled: Bool
+    let cooldownRemaining: Int
     let onPerform: () -> Void
 
     var body: some View {
@@ -2415,6 +2365,7 @@ struct ActionCard: View {
                     Text(action.name)
                         .font(.subheadline)
                         .fontWeight(.medium)
+                        .foregroundColor(isDisabled ? .secondary : .primary)
 
                     Text(action.category.rawValue)
                         .font(.caption2)
@@ -2423,11 +2374,12 @@ struct ActionCard: View {
 
                 Spacer()
 
-                Button("Perform") {
+                Button(action.name == "Make Speech" ? "Write Speech" : "Perform") {
                     onPerform()
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
+                .disabled(isDisabled)
             }
 
             Text(action.description)
@@ -2453,7 +2405,19 @@ struct ActionCard: View {
 
                 Spacer()
 
-                if action.cooldown > 0 {
+                if cooldownRemaining > 0 {
+                    HStack(spacing: 2) {
+                        Image(systemName: "clock")
+                            .font(.caption2)
+                        Text("\(cooldownRemaining) turn\(cooldownRemaining == 1 ? "" : "s") left")
+                            .font(.caption2)
+                    }
+                    .foregroundColor(.red)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(4)
+                } else if action.cooldown > 0 {
                     HStack(spacing: 2) {
                         Image(systemName: "clock")
                             .font(.caption2)
@@ -2467,6 +2431,7 @@ struct ActionCard: View {
         .padding(12)
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(8)
+        .opacity(isDisabled ? 0.6 : 1.0)
     }
 
     private func costIcon(_ type: ActionCostType) -> String {

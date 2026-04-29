@@ -77,6 +77,19 @@ class SimulationEngine: ObservableObject {
         isProcessing = true
         let startTime = Date()
 
+        // 0. Decrement all action cooldowns at start of turn
+        for actionId in gameState.actionCooldowns.keys {
+            if let remaining = gameState.actionCooldowns[actionId], remaining > 0 {
+                gameState.actionCooldowns[actionId] = remaining - 1
+            }
+        }
+        // Remove any zeroed cooldowns
+        gameState.actionCooldowns = gameState.actionCooldowns.filter { $0.value > 0 }
+
+        // 0b. Clear pending decisions and events from last turn — fresh slate each turn
+        gameState.pendingDecisions = []
+        gameState.activeEvents = []
+
         // 1. Calculate time passage
         gameState.world.advanceTime()
 
@@ -134,6 +147,111 @@ class SimulationEngine: ObservableObject {
     }
 
     // MARK: - Player Actions
+
+    /// Returns true if the action can be performed right now (has resources, not on cooldown)
+    func canPerformAction(_ action: GameAction) -> Bool {
+        // Check cooldown
+        if let remaining = gameState.actionCooldowns[action.id], remaining > 0 {
+            return false
+        }
+        // Check resource costs
+        for cost in action.costs {
+            switch cost.type {
+            case .politicalCapital:
+                if gameState.resources.politicalCapital < cost.amount { return false }
+            case .money:
+                if gameState.resources.campaignFunds < cost.amount { return false }
+            case .mediaCycle:
+                if gameState.resources.mediaCycles < Int(cost.amount) { return false }
+            case .time:
+                break
+            }
+        }
+        return true
+    }
+
+    /// Remaining cooldown turns for an action (0 if not on cooldown)
+    func cooldownRemaining(for action: GameAction) -> Int {
+        gameState.actionCooldowns[action.id] ?? 0
+    }
+
+    /// Perform an action: deducts costs, applies effects, starts cooldown
+    func performAction(_ action: GameAction) {
+        // Validate resource costs first
+        for cost in action.costs {
+            switch cost.type {
+            case .politicalCapital:
+                if gameState.resources.politicalCapital < cost.amount {
+                    gameState.world.currentNarrative = "Not enough Political Capital for: \(action.name)"
+                    return
+                }
+            case .money:
+                if gameState.resources.campaignFunds < cost.amount {
+                    gameState.world.currentNarrative = "Not enough Campaign Funds for: \(action.name)"
+                    return
+                }
+            case .mediaCycle:
+                if gameState.resources.mediaCycles < Int(cost.amount) {
+                    gameState.world.currentNarrative = "Not enough Media Cycles for: \(action.name)"
+                    return
+                }
+            case .time:
+                break
+            }
+        }
+
+        // Deduct costs
+        for cost in action.costs {
+            switch cost.type {
+            case .politicalCapital:
+                gameState.resources.politicalCapital -= cost.amount
+            case .money:
+                gameState.resources.campaignFunds -= cost.amount
+            case .mediaCycle:
+                gameState.resources.mediaCycles -= Int(cost.amount)
+            case .time:
+                break
+            }
+        }
+
+        // Apply action effects
+        for (key, value) in action.effects {
+            switch key {
+            case "mediaFavorability":
+                gameState.world.mediaFavorability = max(0, min(100, gameState.world.mediaFavorability + value))
+            case "approvalRating":
+                gameState.world.approvalRating = max(0, min(100, gameState.world.approvalRating + value))
+            case "momentum":
+                gameState.campaignMomentum = max(-10, min(10, gameState.campaignMomentum + value))
+            case "congressionalSupport":
+                gameState.world.congressionalSupport = max(0, min(100, gameState.world.congressionalSupport + value))
+            case "partyUnityScore":
+                gameState.world.partyUnityScore = max(0, min(100, gameState.world.partyUnityScore + value))
+            case "campaignFunds":
+                gameState.resources.campaignFunds = max(0, gameState.resources.campaignFunds + value)
+            case "globalInfluence":
+                gameState.world.globalInfluence = max(0, min(100, gameState.world.globalInfluence + value))
+            case "statePolling":
+                gameState.popularVoteMargin = max(-20, min(20, gameState.popularVoteMargin + value))
+            case "opponentPolling":
+                gameState.opponentPolling = max(0, min(100, gameState.opponentPolling + value))
+            case "cabinetSatisfaction":
+                gameState.cabinetSatisfaction = max(0, min(100, gameState.cabinetSatisfaction + value))
+            case "relationshipTarget":
+                break
+            default:
+                break
+            }
+        }
+
+        // Set cooldown if action has one
+        if action.cooldown > 0 {
+            gameState.actionCooldowns[action.id] = action.cooldown
+        }
+
+        // Show feedback
+        gameState.world.currentNarrative = "You used: \(action.name)"
+    }
 
     func makeDecision(_ decision: Decision, choiceIndex: Int) async {
         guard choiceIndex < decision.options.count else { return }

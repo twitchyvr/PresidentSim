@@ -44,6 +44,9 @@ struct GameState: Codable {
     // Player resources
     var resources: PlayerResources = PlayerResources()
 
+    // Action cooldowns: action UUID -> remaining turns
+    var actionCooldowns: [UUID: Int] = [:]
+
     init(
         phase: GamePhase = .preCampaign,
         player: Player = Player(name: "Player", party: .democrat)
