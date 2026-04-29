@@ -1305,6 +1305,19 @@ struct CampaignView: View {
 
     var body: some View {
         VStack(spacing: 16) {
+            // Phase header
+            HStack {
+                Text(engine.gameState.phase.rawValue.uppercased())
+                    .font(.headline)
+                    .foregroundColor(.playerAccent)
+                Text("•")
+                    .foregroundColor(.secondary)
+                Text("Turn \(engine.gameState.world.currentTurn)")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+
             // Economic dashboard
             EconomicDashboard()
 
