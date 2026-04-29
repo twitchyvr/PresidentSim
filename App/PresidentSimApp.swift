@@ -37,6 +37,27 @@ private func humanReadableKey(_ key: String) -> String {
     }
 }
 
+// MARK: - Theme
+
+extension Color {
+    /// Player/candidate accent color (Democrat blue)
+    static let playerAccent = Color.blue
+    /// Opponent party accent (Republican red)
+    static let opponentAccent = Color.red
+    /// Tossup/swing state indicator
+    static let tossupAccent = Color.orange
+    /// Unread badge / alert color
+    static let unreadBadge = Color.red
+    /// Danger/warning badge (e.g., negative action tags)
+    static let danger = Color.red
+    /// Subtle danger background (cooldown warnings)
+    static let dangerBackground = Color.red.opacity(0.1)
+    /// Interactive highlight (active toolbar tab)
+    static let tabHighlight = Color.orange
+    /// Secondary interactive (inactive toolbar tab)
+    static let tabDefault = Color.blue
+}
+
 @main
 struct PresidentSimApp: App {
     @StateObject private var engine = SimulationEngine()
@@ -88,7 +109,8 @@ struct ContentView: View {
                         }
                     }
                     .buttonStyle(.plain)
-                    .foregroundColor(showCommandCenter ? .orange : .blue)
+                    .foregroundColor(showCommandCenter ? .tossupAccent : .playerAccent)
+                    .accessibilityIdentifier("toolbar.actions")
 
                     Divider().frame(height: 16)
 
@@ -98,13 +120,14 @@ struct ContentView: View {
                             Text("Briefings")
                             if unreadBriefingsCount > 0 {
                                 Text("(\(unreadBriefingsCount))")
-                                    .foregroundColor(.red)
+                                    .foregroundColor(.unreadBadge)
                                     .font(.caption)
                             }
                         }
                     }
                     .buttonStyle(.plain)
-                    .foregroundColor(showBriefings ? .orange : .blue)
+                    .foregroundColor(showBriefings ? .tossupAccent : .playerAccent)
+                    .accessibilityIdentifier("toolbar.briefings")
 
                     Divider().frame(height: 16)
 
@@ -115,7 +138,8 @@ struct ContentView: View {
                         }
                     }
                     .buttonStyle(.plain)
-                    .foregroundColor(showSaveLoad ? .orange : .blue)
+                    .foregroundColor(showSaveLoad ? .tossupAccent : .playerAccent)
+                    .accessibilityIdentifier("toolbar.saveLoad")
                 }
 
                 Spacer()
@@ -128,7 +152,8 @@ struct ContentView: View {
                     }
                 }
                 .buttonStyle(.plain)
-                .foregroundColor(.blue)
+                .foregroundColor(.playerAccent)
+                .accessibilityIdentifier("toolbar.help")
 
                 Divider()
                     .frame(height: 20)
@@ -206,7 +231,7 @@ struct ContentView: View {
                 Button(action: {}) {
                     HStack(spacing: 4) {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.orange)
+                            .foregroundColor(.tossupAccent)
                         Text("Decision Required")
                             .font(.caption)
                     }
@@ -214,6 +239,7 @@ struct ContentView: View {
                 .buttonStyle(.bordered)
                 .disabled(true)
                 .opacity(0.7)
+                .accessibilityIdentifier("advance.decisionRequired")
             } else if engine.gameState.phase == .preCampaign && engine.gameState.player.name != "Player" {
                 Button("Announce Candidacy") {
                     Task {
@@ -221,6 +247,7 @@ struct ContentView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("advance.announceCandidacy")
             } else {
                 Button("Advance Turn") {
                     Task {
@@ -233,6 +260,7 @@ struct ContentView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(" ")
+                .accessibilityIdentifier("advance.turn")
             }
         }
     }
@@ -680,7 +708,7 @@ struct ApprovalTrendView: View {
                             }
                         }
                     }
-                    .stroke(Color.blue, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                    .stroke(Color.playerAccent, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
                 }
                 .frame(height: 40)
 
@@ -720,7 +748,7 @@ struct PoliticalCapitalGauge: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Image(systemName: "bolt.fill")
-                    .foregroundColor(.yellow)
+                    .foregroundColor(.tossupAccent)
                 Text("Political Capital")
                     .font(.caption2)
                     .foregroundColor(.secondary)
@@ -780,7 +808,7 @@ struct SidebarCard<Content: View>: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: icon)
-                    .foregroundColor(.blue)
+                    .foregroundColor(.playerAccent)
                     .font(.caption)
                 Text(title)
                     .font(.caption)
@@ -854,7 +882,7 @@ struct EventSidebar: View {
                         // Current narrative with timestamp
                         HStack(alignment: .top) {
                             Circle()
-                                .fill(Color.blue)
+                                .fill(Color.playerAccent)
                                 .frame(width: 8, height: 8)
                                 .padding(.top, 6)
 
@@ -1034,7 +1062,7 @@ struct DecisionCard: View {
                         Spacer()
                         if option.isRisky {
                             Image(systemName: "exclamationmark.triangle")
-                                .foregroundColor(.orange)
+                                .foregroundColor(.tossupAccent)
                                 .font(.caption2)
                         }
                     }
@@ -1270,7 +1298,7 @@ struct CampaignView: View {
                                     .font(.caption)
                             } else if opponent.momentum < 0 {
                                 Image(systemName: "arrow.down")
-                                    .foregroundColor(.red)
+                                    .foregroundColor(.unreadBadge)
                                     .font(.caption)
                             }
                         }
@@ -1403,7 +1431,7 @@ struct ElectoralMapView: View {
                     Text("\(playerEVs)")
                         .font(.title)
                         .fontWeight(.bold)
-                        .foregroundColor(.blue)
+                        .foregroundColor(.playerAccent)
                     Text("Your EVs")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -1417,7 +1445,7 @@ struct ElectoralMapView: View {
                     Text("\(opponentEVs)")
                         .font(.title)
                         .fontWeight(.bold)
-                        .foregroundColor(.red)
+                        .foregroundColor(.opponentAccent)
                     Text("Opponent EVs")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -1428,7 +1456,7 @@ struct ElectoralMapView: View {
                 VStack(alignment: .trailing) {
                     Text("\(swingEVs) Tossup")
                         .font(.caption)
-                        .foregroundColor(.orange)
+                        .foregroundColor(.tossupAccent)
                     Text("Swing State EVs")
                         .font(.caption2)
                         .foregroundColor(.secondary)
@@ -1451,9 +1479,12 @@ struct ElectoralMapView: View {
 
             // Legend
             HStack(spacing: 16) {
-                LegendItem(color: .blue, label: "Leaning You")
-                LegendItem(color: .red, label: "Leaning Opponent")
-                LegendItem(color: .yellow, label: "Tossup")
+                LegendItem(color: .playerAccent, label: "Leaning You")
+                    .accessibilityIdentifier("electoral.legend.player")
+                LegendItem(color: .opponentAccent, label: "Leaning Opponent")
+                    .accessibilityIdentifier("electoral.legend.opponent")
+                LegendItem(color: .tossupAccent, label: "Tossup")
+                    .accessibilityIdentifier("electoral.legend.tossup")
                 Spacer()
             }
             .font(.caption)
@@ -1527,15 +1558,16 @@ struct StateCell: View {
         .cornerRadius(4)
         .overlay(
             RoundedRectangle(cornerRadius: 4)
-                .stroke(standing == .tossup ? Color.orange : Color.clear, lineWidth: 2)
+                .stroke(standing == .tossup ? Color.tossupAccent : Color.clear, lineWidth: 2)
         )
+        .accessibilityIdentifier("electoral.state.\(state.abbreviation)")
     }
 
     var standingColor: Color {
         switch standing {
-        case .player: return .blue
-        case .opponent: return .red
-        case .tossup: return .yellow
+        case .player: return .playerAccent
+        case .opponent: return .opponentAccent
+        case .tossup: return .tossupAccent
         }
     }
 }
@@ -1601,9 +1633,9 @@ struct StateDetailView: View {
             if standing == .tossup {
                 Text("This is a swing state - a key battleground!")
                     .font(.caption)
-                    .foregroundColor(.orange)
+                    .foregroundColor(.tossupAccent)
                     .padding()
-                    .background(Color.orange.opacity(0.1))
+                    .background(Color.tossupAccent.opacity(0.1))
                     .cornerRadius(8)
             }
         }
@@ -1621,9 +1653,9 @@ struct StateDetailView: View {
 
     var standingColor: Color {
         switch standing {
-        case .player: return .blue
-        case .opponent: return .red
-        case .tossup: return .orange
+        case .player: return .playerAccent
+        case .opponent: return .opponentAccent
+        case .tossup: return .tossupAccent
         }
     }
 }
@@ -1881,7 +1913,7 @@ struct NewsTickerView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(Color.red)
+                    .background(Color.danger)
                     .cornerRadius(2)
 
                 Text(text)
@@ -2560,10 +2592,10 @@ struct ActionCard: View {
                         Text("\(Int(cost.amount))")
                             .font(.caption2)
                     }
-                    .foregroundColor(.orange)
+                    .foregroundColor(.tossupAccent)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(Color.orange.opacity(0.1))
+                    .background(Color.tossupAccent.opacity(0.1))
                     .cornerRadius(4)
                     .help(costTooltip(cost.type))
                 }
@@ -2577,10 +2609,10 @@ struct ActionCard: View {
                         Text("\(cooldownRemaining) turn\(cooldownRemaining == 1 ? "" : "s") left")
                             .font(.caption2)
                     }
-                    .foregroundColor(.red)
+                    .foregroundColor(.unreadBadge)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(Color.red.opacity(0.1))
+                    .background(Color.dangerBackground)
                     .cornerRadius(4)
                     .help("This action is on cooldown and cannot be used again for \(cooldownRemaining) more turn\(cooldownRemaining == 1 ? "" : "s").")
                 } else if action.cooldown > 0 {
@@ -2709,7 +2741,7 @@ struct BriefingCard: View {
 
                         if briefing.requiresResponse {
                             Image(systemName: "exclamationmark.circle.fill")
-                                .foregroundColor(.orange)
+                                .foregroundColor(.tossupAccent)
                                 .font(.caption)
                         }
                     }
@@ -2731,7 +2763,7 @@ struct BriefingCard: View {
                         if let deadline = briefing.deadline {
                             Text("Due: Turn \(deadline)")
                                 .font(.caption2)
-                                .foregroundColor(.orange)
+                                .foregroundColor(.tossupAccent)
                         }
                     }
                 }
@@ -3003,11 +3035,11 @@ struct BriefingDetailView: View {
                                             HStack(spacing: 2) {
                                                 Image(systemName: "minus.circle.fill")
                                                     .font(.caption2)
-                                                    .foregroundColor(.red)
+                                                    .foregroundColor(.unreadBadge)
                                                 Text("Cons")
                                                     .font(.caption2)
                                                     .fontWeight(.semibold)
-                                                    .foregroundColor(.red)
+                                                    .foregroundColor(.unreadBadge)
                                             }
                                             ForEach(option.cons, id: \.self) { con in
                                                 Text("• \(con)")
