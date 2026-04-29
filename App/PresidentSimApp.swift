@@ -39,29 +39,78 @@ private func humanReadableKey(_ key: String) -> String {
 
 // MARK: - Theme
 
+// MARK: - Color-Blind Mode
+/// UserDefaults key for color-blind accessible mode
+private let colorBlindModeKey = "PresidentSim.colorBlindMode"
+
+extension UserDefaults {
+    /// Whether color-blind accessible mode is enabled.
+    /// When true, replaces red/green encodings with blue/orange palette.
+    var colorBlindMode: Bool {
+        get { bool(forKey: colorBlindModeKey) }
+        set { set(newValue, forKey: colorBlindModeKey) }
+    }
+}
+
 extension Color {
     /// Player/candidate accent color (Democrat blue)
-    static let playerAccent = Color.blue
+    /// #1E3A5F — passes WCAG 4.5:1 on white (#FFFFFF, ratio ~8.2:1)
+    static let playerAccent = Color(red: 30/255, green: 58/255, blue: 95/255)
+
     /// Opponent party accent (Republican red)
-    static let opponentAccent = Color.red
+    /// Normal: #8B1A1A (ratio 5.9:1 on white)
+    /// Color-blind mode: #00539B (safe blue, ratio ~8.2:1)
+    static var opponentAccent: Color {
+        UserDefaults.standard.colorBlindMode
+            ? Color(red: 0/255, green: 83/255, blue: 155/255)   // accessible blue
+            : Color(red: 139/255, green: 26/255, blue: 26/255) // accessible red
+    }
+
     /// Tossup/swing state indicator
-    static let tossupAccent = Color.orange
+    /// #B7550A — passes WCAG 4.5:1 on white (#FFFFFF, ratio ~5.0:1)
+    static let tossupAccent = Color(red: 183/255, green: 85/255, blue: 10/255)
+
     /// Unread badge / alert color
-    static let unreadBadge = Color.red
+    /// Color-blind mode: uses tossupAccent orange instead of red
+    static var unreadBadge: Color {
+        UserDefaults.standard.colorBlindMode
+            ? Color(red: 183/255, green: 85/255, blue: 10/255) // orange
+            : Color(red: 139/255, green: 26/255, blue: 26/255)  // accessible red
+    }
+
     /// Danger/warning badge (e.g., negative action tags)
-    static let danger = Color.red
+    /// Color-blind mode: uses tossupAccent orange instead of red
+    static var danger: Color {
+        UserDefaults.standard.colorBlindMode
+            ? Color(red: 183/255, green: 85/255, blue: 10/255) // orange
+            : Color(red: 139/255, green: 26/255, blue: 26/255) // accessible red
+    }
+
     /// Subtle danger background (cooldown warnings)
-    static let dangerBackground = Color.red.opacity(0.1)
+    static var dangerBackground: Color {
+        danger.opacity(0.1)
+    }
+
     /// Interactive highlight (active toolbar tab)
-    static let tabHighlight = Color.orange
+    static let tabHighlight = Color(red: 183/255, green: 85/255, blue: 10/255)
     /// Secondary interactive (inactive toolbar tab)
-    static let tabDefault = Color.blue
+    static let tabDefault = Color(red: 30/255, green: 58/255, blue: 95/255)
     /// Tip/idea accent (lightbulb icons)
-    static let tipAccent = Color.yellow
+    /// #8B6914 — passes WCAG 4.5:1 on white (#FFFFFF, ratio ~4.6:1)
+    static let tipAccent = Color(red: 139/255, green: 105/255, blue: 20/255)
+
     /// Positive/good indicator (approval up, gains, success)
-    static let positive = Color.green
+    /// Normal: #1A5C1A (ratio 8.6:1 on white)
+    /// Color-blind mode: #1E5C8A (teal-blue, ratio ~7.8:1) — distinct from opponentAccent blue
+    static var positive: Color {
+        UserDefaults.standard.colorBlindMode
+            ? Color(red: 30/255, green: 92/255, blue: 138/255)  // teal-blue
+            : Color(red: 26/255, green: 92/255, blue: 26/255)  // accessible green
+    }
+
     /// Special/campaign indicator (AI tag, funds)
-    static let special = Color.purple
+    /// #5B1A6B — passes WCAG 4.5:1 on white (#FFFFFF, ratio ~6.4:1)
+    static let special = Color(red: 91/255, green: 26/255, blue: 107/255)
 }
 
 @main
@@ -92,6 +141,14 @@ struct ContentView: View {
     @State private var showBriefings = false
     @State private var showSaveLoad = false
     @State private var showNewGame = false
+    @State private var colorBlindMode: Bool {
+        didSet { UserDefaults.standard.colorBlindMode = colorBlindMode }
+    }
+    @State private var colorBlindToggleTrigger = false  // forces view refresh on UD change
+
+    init() {
+        _colorBlindMode = State(initialValue: UserDefaults.standard.bool(forKey: "PresidentSim.colorBlindMode"))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -116,6 +173,8 @@ struct ContentView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("errorBanner.dismiss")
+                    .accessibilityLabel("Dismiss error")
+                    .accessibilityHint("Closes this error message")
                 }
                 .padding(8)
                 .background(Color.danger.opacity(0.1))
@@ -139,6 +198,9 @@ struct ContentView: View {
                     .buttonStyle(.plain)
                     .foregroundColor(showCommandCenter ? .tossupAccent : .playerAccent)
                     .accessibilityIdentifier("toolbar.actions")
+                    .accessibilityLabel("Actions panel")
+                    .accessibilityHint(showCommandCenter ? "Closes the actions panel" : "Opens the actions panel where you can choose campaign and governing activities")
+                    .keyboardShortcut("1", modifiers: .command)
 
                     Divider().frame(height: 16)
 
@@ -156,6 +218,10 @@ struct ContentView: View {
                     .buttonStyle(.plain)
                     .foregroundColor(showBriefings ? .tossupAccent : .playerAccent)
                     .accessibilityIdentifier("toolbar.briefings")
+                    .accessibilityLabel("Presidential Briefings")
+                    .accessibilityValue(unreadBriefingsCount > 0 ? "\(unreadBriefingsCount) unread" : "All read")
+                    .accessibilityHint(showBriefings ? "Closes the briefings panel" : "Opens your presidential intelligence briefings")
+                    .keyboardShortcut("2", modifiers: .command)
 
                     Divider().frame(height: 16)
 
@@ -168,6 +234,9 @@ struct ContentView: View {
                     .buttonStyle(.plain)
                     .foregroundColor(showSaveLoad ? .tossupAccent : .playerAccent)
                     .accessibilityIdentifier("toolbar.saveLoad")
+                    .accessibilityLabel("Save or Load game")
+                    .accessibilityHint(showSaveLoad ? "Closes the save and load panel" : "Opens panel to save your current game or load a previous one")
+                    .keyboardShortcut("s", modifiers: .command)
                 }
 
                 Spacer()
@@ -182,6 +251,24 @@ struct ContentView: View {
                 .buttonStyle(.plain)
                 .foregroundColor(.playerAccent)
                 .accessibilityIdentifier("toolbar.help")
+                .accessibilityLabel("How to Play")
+                .accessibilityHint("Opens the interactive tutorial and game guide")
+                .keyboardShortcut("/", modifiers: .command)
+
+                // Color-blind accessible mode toggle
+                Button(action: { colorBlindMode.toggle() }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: colorBlindMode ? "eye.fill" : "eye")
+                        Text(colorBlindMode ? "Color Blind On" : "Color Blind Off")
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(colorBlindMode ? .tossupAccent : .playerAccent)
+                .accessibilityIdentifier("toolbar.colorBlind")
+                .accessibilityLabel("Color blind accessible mode")
+                .accessibilityValue(colorBlindMode ? "Enabled" : "Disabled")
+                .accessibilityHint(colorBlindMode ? "Disables high-contrast color mode" : "Enables high-contrast color mode using blue and orange instead of red and green")
+                .keyboardShortcut("c", modifiers: [.command, .shift])
 
                 Divider()
                     .frame(height: 20)
@@ -268,6 +355,8 @@ struct ContentView: View {
                 .disabled(true)
                 .opacity(0.7)
                 .accessibilityIdentifier("advance.decisionRequired")
+                .accessibilityLabel("Decision Required")
+                .accessibilityHint("You must make a decision in the Decisions Required panel before advancing the turn")
             } else if engine.gameState.phase == .preCampaign && engine.gameState.player.name != "Player" {
                 Button("Announce Candidacy") {
                     Task {
@@ -276,6 +365,8 @@ struct ContentView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("advance.announceCandidacy")
+                .accessibilityLabel("Announce Candidacy")
+                .accessibilityHint("Declares your candidacy and begins the primary campaign season")
             } else {
                 Button("Advance Turn") {
                     Task {
@@ -289,6 +380,8 @@ struct ContentView: View {
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(" ")
                 .accessibilityIdentifier("advance.turn")
+                .accessibilityLabel("Advance Turn")
+                .accessibilityHint("Advances to the next turn, processes events and consequences. Press Space or Enter to activate")
             }
         }
     }
@@ -1120,6 +1213,9 @@ struct DecisionCard: View {
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
                         .accessibilityIdentifier("decision.\(decision.id.uuidString.prefix(8)).confirm")
+                        .accessibilityLabel("Confirm decision")
+                        .accessibilityHint("Commits your choice of \(decision.options[idx].text)")
+                        .keyboardShortcut(.defaultAction)
 
                         Button("Cancel", role: .cancel) {
                             showConfirmation = false
@@ -1127,6 +1223,9 @@ struct DecisionCard: View {
                         }
                         .controlSize(.small)
                         .accessibilityIdentifier("decision.\(decision.id.uuidString.prefix(8)).cancel")
+                        .accessibilityLabel("Cancel decision")
+                        .accessibilityHint("Abandons your selected option and closes the confirmation")
+                        .keyboardShortcut(.escape)
                     }
                 }
                 .padding(8)
@@ -1313,6 +1412,8 @@ struct PreCampaignView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .font(.headline)
+                    .accessibilityLabel("Announce Candidacy")
+                    .accessibilityHint("Formally declares your candidacy and begins the primary campaign season")
 
                     Text("This starts the campaign trail. Your first primary debates and fundraising calls will begin.")
                         .font(.caption)
@@ -1421,6 +1522,8 @@ struct ConventionView: View {
                             engine.selectVP(name)
                         }
                         .buttonStyle(.bordered)
+                        .accessibilityLabel("Select \(name) as Vice Presidential running mate")
+                        .accessibilityHint("Chooses \(name) as your running mate for the campaign")
                     }
                 }
             } else {
@@ -1664,6 +1767,16 @@ struct StateCell: View {
                 .stroke(standing == .tossup ? Color.tossupAccent : Color.clear, lineWidth: 2)
         )
         .accessibilityIdentifier("electoral.state.\(state.abbreviation)")
+        .accessibilityLabel("\(state.name), \(state.electoralVotes) electoral votes")
+        .accessibilityValue(standingText)
+    }
+
+    var standingText: String {
+        switch standing {
+        case .player: return "Leaning toward you"
+        case .opponent: return "Leaning toward opponent"
+        case .tossup: return "Tossup state"
+        }
     }
 
     var standingColor: Color {
@@ -1687,6 +1800,8 @@ struct LegendItem: View {
             Text(label)
                 .foregroundColor(.secondary)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(label)
     }
 }
 
@@ -1704,6 +1819,8 @@ struct StateDetailView: View {
                     .fontWeight(.bold)
                 Spacer()
                 Button("Done") { dismiss() }
+                    .accessibilityLabel("Close state detail")
+                    .accessibilityHint("Closes the detail view for \(state.name)")
             }
 
             Divider()
@@ -1848,6 +1965,8 @@ struct ExitedView: View {
             }
             .buttonStyle(.borderedProminent)
             .accessibilityIdentifier("exited.startNewGame")
+            .accessibilityLabel("Start New Game")
+            .accessibilityHint("Ends your current presidency and opens the new game configuration panel")
         }
         .padding()
     }
@@ -2107,6 +2226,8 @@ struct EventDetailView: View {
                     dismiss()
                 }
                 .buttonStyle(.bordered)
+                .accessibilityLabel("Close event detail")
+                .accessibilityHint("Closes the event detail view")
             }
 
             Divider()
@@ -2194,6 +2315,8 @@ struct NewGameView: View {
                 TextField("Candidate Name", text: $candidateName)
                     .textFieldStyle(.roundedBorder)
                     .accessibilityIdentifier("newGame.name")
+                    .accessibilityLabel("Candidate Name")
+                    .accessibilityHint("Enter your candidate's full name as it will appear on the ballot")
 
                 Picker("Party", selection: $selectedParty) {
                     ForEach(PoliticalParty.allCases, id: \.self) { party in
@@ -2201,6 +2324,8 @@ struct NewGameView: View {
                     }
                 }
                 .accessibilityIdentifier("newGame.party")
+                .accessibilityLabel("Political Party")
+                .accessibilityHint("Select your candidate's party affiliation")
 
                 Picker("Home State", selection: $homeState) {
                     ForEach(states, id: \.self) { state in
@@ -2208,6 +2333,8 @@ struct NewGameView: View {
                     }
                 }
                 .accessibilityIdentifier("newGame.homeState")
+                .accessibilityLabel("Home State")
+                .accessibilityHint("Select the state your candidate is based in")
 
                 Picker("Prior Experience", selection: $occupation) {
                     ForEach(occupations, id: \.self) { occ in
@@ -2215,10 +2342,14 @@ struct NewGameView: View {
                     }
                 }
                 .accessibilityIdentifier("newGame.occupation")
+                .accessibilityLabel("Prior Experience")
+                .accessibilityHint("Select your candidate's prior experience background")
 
                 Toggle("Use AI for consequence calculation", isOn: $useAI)
                     .disabled(engine.aiBrain == nil)
                     .accessibilityIdentifier("newGame.useAI")
+                    .accessibilityLabel("Use AI for consequence calculation")
+                    .accessibilityHint("When enabled, AI calculates realistic consequences for your decisions. Disable for purely rules-based gameplay")
             }
             .frame(width: 300)
 
@@ -2228,6 +2359,9 @@ struct NewGameView: View {
                 }
                 .buttonStyle(.bordered)
                 .accessibilityIdentifier("newGame.cancel")
+                .accessibilityLabel("Cancel new game")
+                .accessibilityHint("Closes this form without starting a new game")
+                .keyboardShortcut(.escape)
 
                 Button("Start Game") {
                     startGame()
@@ -2235,6 +2369,9 @@ struct NewGameView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(candidateName.isEmpty)
                 .accessibilityIdentifier("newGame.start")
+                .accessibilityLabel("Start Game")
+                .accessibilityHint("Starts a new game with your configured candidate")
+                .keyboardShortcut(.defaultAction)
             }
         }
         .padding(30)
@@ -2291,6 +2428,9 @@ struct CommandCenterView: View {
                     dismiss()
                 }
                 .buttonStyle(.bordered)
+                .accessibilityLabel("Close command center")
+                .accessibilityHint("Closes the command center and returns to the game")
+                .keyboardShortcut(.escape)
             }
             .padding()
             .background(Color(NSColor.controlBackgroundColor))
@@ -2514,6 +2654,9 @@ struct CategoryTab: View {
         }
         .buttonStyle(.plain)
         .help(categoryTooltip)
+        .accessibilityLabel("\(category.rawValue) category")
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
+        .accessibilityHint(isSelected ? "Deselects the \(category.rawValue) filter" : "Filters actions to show only \(category.rawValue) actions")
     }
 
     private var categoryIcon: String {
@@ -2564,6 +2707,8 @@ struct SpeechEditorSheet: View {
                     onCancel()
                 }
                 .buttonStyle(.bordered)
+                .accessibilityLabel("Cancel speech")
+                .accessibilityHint("Closes without saving any changes. The action cost has already been deducted")
             }
             .padding()
             .background(Color(NSColor.controlBackgroundColor))
@@ -2614,6 +2759,8 @@ struct SpeechEditorSheet: View {
                         }
                         .buttonStyle(.bordered)
                         .disabled(isGenerating)
+                        .accessibilityLabel("AI Generate Speech")
+                        .accessibilityHint("Uses AI to generate a draft speech based on the selected type and tone")
 
                         Spacer()
                     }
@@ -2659,6 +2806,8 @@ struct SpeechEditorSheet: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(speechText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .accessibilityLabel("Deliver Speech")
+                .accessibilityHint("Finalizes and delivers your speech. This action cannot be undone")
             }
             .padding()
         }
@@ -2701,6 +2850,8 @@ struct ActionCard: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .disabled(isDisabled || isLoading)
+                .accessibilityLabel(action.name == "Make Speech" ? "Write Speech" : "Perform \(action.name)")
+                .accessibilityHint(isDisabled ? "This action is currently unavailable due to insufficient resources or cooldown" : "Performs the \(action.name) action, which will consume resources")
             }
 
             Text(action.description)
@@ -2757,6 +2908,8 @@ struct ActionCard: View {
         .cornerRadius(8)
         .opacity(isDisabled ? 0.6 : 1.0)
         .accessibilityIdentifier("action.\(action.name.replacingOccurrences(of: " ", with: "_").lowercased())")
+        .accessibilityLabel("\(action.name), \(action.category.rawValue) action")
+        .accessibilityValue(isDisabled ? "Unavailable" : "Available")
     }
 
     private func costIcon(_ type: ActionCostType) -> String {
@@ -2803,6 +2956,8 @@ struct BriefingsView: View {
                     dismiss()
                 }
                 .buttonStyle(.bordered)
+                .accessibilityLabel("Close briefings panel")
+                .accessibilityHint("Closes the presidential briefings panel")
             }
             .padding()
             .background(Color(NSColor.controlBackgroundColor))
@@ -2906,6 +3061,9 @@ struct BriefingCard: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("briefingCard.\(briefing.id.uuidString.prefix(8))")
+        .accessibilityLabel("\(briefing.title), \(briefing.type.rawValue) briefing")
+        .accessibilityHint("Opens this briefing to view details and respond if required")
+        .accessibilityValue(briefing.isResolved ? "Resolved" : (briefing.isRead ? "Unread" : "New"))
     }
 
     private var urgencyColor: Color {
@@ -2938,6 +3096,8 @@ struct SaveLoadView: View {
                 Button("Done") {
                     dismiss()
                 }
+                .accessibilityLabel("Close save and load panel")
+                .accessibilityHint("Closes this panel and returns to the game")
             }
             .padding()
             .background(Color(NSColor.windowBackgroundColor))
@@ -2960,6 +3120,8 @@ struct SaveLoadView: View {
                         }
                     }
                     .disabled(isSaving)
+                    .accessibilityLabel("Save Game")
+                    .accessibilityHint("Saves your current game progress to disk")
 
                     Spacer()
                 }
@@ -2992,11 +3154,15 @@ struct SaveLoadView: View {
                                 Button("Load") {
                                     loadGame(save.filename)
                                 }
+                                .accessibilityLabel("Load game: \(save.displayName)")
+                                .accessibilityHint("Loads the saved game '\(save.displayName)' from \(save.formattedDate)")
                                 Button(role: .destructive) {
                                     deleteSave(save.filename)
                                 } label: {
                                     Image(systemName: "trash")
                                 }
+                                .accessibilityLabel("Delete saved game: \(save.displayName)")
+                                .accessibilityHint("Permanently deletes the saved game '\(save.displayName)'")
                                 .buttonStyle(.plain)
                             }
                             .padding(.vertical, 4)
@@ -3088,6 +3254,8 @@ struct BriefingDetailView: View {
                     dismiss()
                 }
                 .buttonStyle(.bordered)
+                .accessibilityLabel("Close briefing")
+                .accessibilityHint("Closes the briefing detail view")
             }
 
             Divider()
@@ -3146,13 +3314,9 @@ struct BriefingDetailView: View {
                                                 Text("Pros")
                                                     .font(.caption2)
                                                     .fontWeight(.semibold)
-                                                    .foregroundColor(.positive)
-                                            }
-                                            ForEach(option.pros, id: \.self) { pro in
-                                                Text("• \(pro)")
+                                                Text(option.pros.joined(separator: ", "))
                                                     .font(.caption2)
                                                     .foregroundColor(.secondary)
-                                                    .padding(.leading, 14)
                                             }
                                         }
                                     }
@@ -3162,29 +3326,26 @@ struct BriefingDetailView: View {
                                             HStack(spacing: 2) {
                                                 Image(systemName: "minus.circle.fill")
                                                     .font(.caption2)
-                                                    .foregroundColor(.unreadBadge)
+                                                    .foregroundColor(.danger)
                                                 Text("Cons")
                                                     .font(.caption2)
                                                     .fontWeight(.semibold)
-                                                    .foregroundColor(.unreadBadge)
-                                            }
-                                            ForEach(option.cons, id: \.self) { con in
-                                                Text("• \(con)")
+                                                Text(option.cons.joined(separator: ", "))
                                                     .font(.caption2)
                                                     .foregroundColor(.secondary)
-                                                    .padding(.leading, 14)
                                             }
                                         }
                                     }
                                 }
-                                .padding(.leading, 22)
                             }
                         }
-                        .padding(10)
+                        .padding(12)
                         .background(Color(NSColor.controlBackgroundColor))
-                        .cornerRadius(6)
+                        .cornerRadius(8)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Option: \(option.label)")
+                    .accessibilityHint("Selects this response option and closes the briefing")
                 }
             }
 
