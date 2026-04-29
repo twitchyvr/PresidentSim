@@ -13,6 +13,7 @@ struct GameState: Codable {
     var pollingData: [String: Double] // state -> percentage
     var electoralVotes: Int
     var popularVoteMargin: Double
+    var opponentPolling: Double
 
     // Convention
     var conventionDelegates: [String: Int] // state -> delegate count
@@ -58,6 +59,7 @@ struct GameState: Codable {
         self.pollingData = [:]
         self.electoralVotes = 0
         self.popularVoteMargin = 0.0
+        self.opponentPolling = 45.0
 
         self.conventionDelegates = [:]
         self.vpShortlist = []

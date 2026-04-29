@@ -2113,6 +2113,13 @@ struct CommandCenterView: View {
                 engine.gameState.world.globalInfluence = max(0, min(100, engine.gameState.world.globalInfluence + value))
             case "statePolling":
                 engine.gameState.popularVoteMargin = max(-20, min(20, engine.gameState.popularVoteMargin + value))
+            case "opponentPolling":
+                engine.gameState.opponentPolling = max(0, min(100, engine.gameState.opponentPolling + value))
+            case "cabinetSatisfaction":
+                engine.gameState.cabinetSatisfaction = max(0, min(100, engine.gameState.cabinetSatisfaction + value))
+            case "relationshipTarget":
+                // relationshipTarget is handled per-country in diplomatic actions; generic fallback here
+                break
             default:
                 break
             }
@@ -2127,8 +2134,7 @@ struct CommandCenterView: View {
             SpeechService.shared.speakDraftSpeech(speechText)
         }
 
-        // Dismiss after action
-        dismiss()
+        // Sheet stays open — user can perform multiple actions or click "Done"
     }
 
     private func formatMoney(_ amount: Double) -> String {
