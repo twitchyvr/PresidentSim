@@ -2795,7 +2795,7 @@ struct BriefingCard: View {
                     .font(.caption)
             }
             .padding(12)
-            .background(briefing.isResolved ? Color.green.opacity(0.1) : Color(NSColor.controlBackgroundColor))
+            .background(briefing.isResolved ? Color.positive.opacity(0.1) : Color(NSColor.controlBackgroundColor))
             .cornerRadius(8)
         }
         .buttonStyle(.plain)
