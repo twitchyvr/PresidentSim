@@ -80,10 +80,11 @@ struct WorldState: Codable {
     }
 
     var turnDescription: String {
-        let month = (currentTurn % 52) / 4 + 1
+        // 52 weeks per year, 4 turns per month (13 months with 1 overlap at year boundary)
+        let monthIndex = (((currentTurn - 1) % 52) / 4) % 12
         let monthName = ["January", "February", "March", "April", "May", "June",
-                        "July", "August", "September", "October", "November", "December"][month - 1]
-        let week = (currentTurn % 13) + 1
+                        "July", "August", "September", "October", "November", "December"][monthIndex]
+        let week = ((currentTurn - 1) % 13) + 1
         return "\(monthName), Week \(week), \(currentYear)"
     }
 }
