@@ -56,6 +56,8 @@ extension Color {
     static let tabHighlight = Color.orange
     /// Secondary interactive (inactive toolbar tab)
     static let tabDefault = Color.blue
+    /// Tip/idea accent (lightbulb icons)
+    static let tipAccent = Color.yellow
 }
 
 @main
@@ -1731,6 +1733,7 @@ struct ExitedView: View {
                 showNewGame = true
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier("exited.startNewGame")
         }
         .padding()
     }
@@ -2075,27 +2078,33 @@ struct NewGameView: View {
 
             Form {
                 TextField("Candidate Name", text: $candidateName)
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("newGame.name")
 
                 Picker("Party", selection: $selectedParty) {
                     ForEach(PoliticalParty.allCases, id: \.self) { party in
                         Text(party.rawValue).tag(party)
                     }
                 }
+                .accessibilityIdentifier("newGame.party")
 
                 Picker("Home State", selection: $homeState) {
                     ForEach(states, id: \.self) { state in
                         Text(state).tag(state)
                     }
                 }
+                .accessibilityIdentifier("newGame.homeState")
 
                 Picker("Prior Experience", selection: $occupation) {
                     ForEach(occupations, id: \.self) { occ in
                         Text(occ).tag(occ)
                     }
                 }
+                .accessibilityIdentifier("newGame.occupation")
 
                 Toggle("Use AI for consequence calculation", isOn: $useAI)
                     .disabled(engine.aiBrain == nil)
+                    .accessibilityIdentifier("newGame.useAI")
             }
             .frame(width: 300)
 
@@ -2104,12 +2113,14 @@ struct NewGameView: View {
                     isPresented = false
                 }
                 .buttonStyle(.bordered)
+                .accessibilityIdentifier("newGame.cancel")
 
                 Button("Start Game") {
                     startGame()
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(candidateName.isEmpty)
+                .accessibilityIdentifier("newGame.start")
             }
         }
         .padding(30)

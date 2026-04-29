@@ -15,7 +15,7 @@ struct TutorialOverlay: View {
                 // Header
                 HStack {
                     Image(systemName: "book.fill")
-                        .foregroundColor(.blue)
+                        .foregroundColor(.playerAccent)
                     Text("How to Play PresidentSim")
                         .font(.headline)
                     Spacer()
@@ -77,7 +77,7 @@ struct TutorialOverview: View {
                         Button(action: { onSelectTopic(topic) }) {
                             HStack {
                                 Image(systemName: topic.icon)
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(.playerAccent)
                                     .frame(width: 30)
 
                                 VStack(alignment: .leading) {
@@ -122,7 +122,7 @@ struct TutorialTopicView: View {
                 .font(.caption)
             }
             .buttonStyle(.plain)
-            .foregroundColor(.blue)
+            .foregroundColor(.playerAccent)
 
             Text(topic.title)
                 .font(.title2)
@@ -142,7 +142,7 @@ struct TutorialTopicView: View {
                         ForEach(topic.tips, id: \.self) { tip in
                             HStack(alignment: .top, spacing: 8) {
                                 Image(systemName: "lightbulb.fill")
-                                    .foregroundColor(.yellow)
+                                    .foregroundColor(.tipAccent)
                                     .font(.caption)
                                 Text(tip)
                                     .font(.caption)
