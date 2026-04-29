@@ -337,8 +337,6 @@ class SimulationEngine: ObservableObject {
             case "relationshipTarget":
                 // Diplomatic actions handle this via initiateDiplomacy; this is a fallback
                 break
-            case "globalInfluence":
-                gameState.world.globalInfluence = max(0, min(100, gameState.world.globalInfluence + value))
             default:
                 break
             }
@@ -1656,7 +1654,7 @@ class SimulationEngine: ObservableObject {
     func startDebugMonitoring(interval: TimeInterval = 2.0) {
         stopDebugMonitoring()
         debugTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 self?.writeDebugSnapshot()
             }
         }
