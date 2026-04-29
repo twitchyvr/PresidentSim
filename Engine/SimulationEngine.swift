@@ -52,6 +52,31 @@ class SimulationEngine: ObservableObject {
         startDebugMonitoring(interval: 2.0)
     }
 
+    /// Resets to preCampaign phase with a default player, then opens the NewGameView sheet
+    /// so the player can configure their candidate. Used by "Start New Game" in ExitedView.
+    func startNewGame() {
+        let defaultPlayer = Player(
+            name: "Player",
+            party: .democrat,
+            age: 45,
+            health: 0.95,
+            homeState: "California",
+            occupation: "Governor",
+            priorExperience: ["State Legislator"]
+        )
+        gameState = GameState(phase: .preCampaign, player: defaultPlayer)
+        gameState.world.addLedgerEntry(LedgerEntry(
+            turn: 1,
+            year: 2025,
+            phase: .preCampaign,
+            title: "Journey Begins",
+            description: "\(defaultPlayer.name) announces presidential candidacy"
+        ))
+        currentSaveName = nil
+        writeDebugSnapshot()
+        startDebugMonitoring(interval: 2.0)
+    }
+
     // MARK: - Persistence
 
     func saveGame() throws {

@@ -64,6 +64,7 @@ struct ContentView: View {
     @State private var showCommandCenter = false
     @State private var showBriefings = false
     @State private var showSaveLoad = false
+    @State private var showNewGame = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -151,7 +152,7 @@ struct ContentView: View {
                 Divider()
 
                 // Center - main game area
-                GameMainView()
+                GameMainView(showNewGame: $showNewGame)
 
                 Divider()
 
@@ -1179,6 +1180,7 @@ struct EventCard: View {
 
 struct GameMainView: View {
     @EnvironmentObject var engine: SimulationEngine
+    @Binding var showNewGame: Bool
 
     var body: some View {
         VStack(spacing: 16) {
@@ -1197,7 +1199,7 @@ struct GameMainView: View {
             case .presidency, .lameDuck:
                 PresidencyView()
             case .exited:
-                ExitedView()
+                ExitedView(showNewGame: $showNewGame)
             }
 
             Spacer()
@@ -1676,6 +1678,7 @@ struct PresidencyView: View {
 
 struct ExitedView: View {
     @EnvironmentObject var engine: SimulationEngine
+    @Binding var showNewGame: Bool
 
     var body: some View {
         VStack(spacing: 24) {
@@ -1692,7 +1695,8 @@ struct ExitedView: View {
                 .foregroundColor(.secondary)
 
             Button("Start New Game") {
-                // Would trigger new game
+                engine.startNewGame()
+                showNewGame = true
             }
             .buttonStyle(.borderedProminent)
         }
