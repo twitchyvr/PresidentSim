@@ -609,9 +609,9 @@ struct ApprovalGaugeView: View {
     let approval: Double
 
     var gaugeColor: Color {
-        if approval >= 60 { return .green }
-        if approval >= 40 { return .orange }
-        return .red
+        if approval >= 60 { return .positive }
+        if approval >= 40 { return .tossupAccent }
+        return .danger
     }
 
     var body: some View {
@@ -678,8 +678,8 @@ struct MomentumIndicator: View {
     }
 
     var momentumColor: Color {
-        if momentum > 0.5 { return .green }
-        if momentum < -0.5 { return .red }
+        if momentum > 0.5 { return .positive }
+        if momentum < -0.5 { return .danger }
         return .gray
     }
 }
@@ -791,9 +791,9 @@ struct PoliticalCapitalGauge: View {
     }
 
     var capitalColor: Color {
-        if capital >= 70 { return .green }
-        if capital >= 40 { return .yellow }
-        return .red
+        if capital >= 70 { return .positive }
+        if capital >= 40 { return .tipAccent }
+        return .danger
     }
 }
 
@@ -982,9 +982,9 @@ struct EventSidebar: View {
 
     func outcomeColor(for outcome: DecisionOutcome) -> Color {
         switch outcome {
-        case .success: return .green
-        case .mixed: return .orange
-        case .failure: return .red
+        case .success: return .positive
+        case .mixed: return .tossupAccent
+        case .failure: return .danger
         }
     }
 }
@@ -1031,10 +1031,10 @@ struct SituationFeedItem: View {
         switch entry.phase {
         case .preCampaign, .campaign: return .playerAccent
         case .primaries: return .special
-        case .convention: return .orange
-        case .generalElection: return .red
+        case .convention: return .tossupAccent
+        case .generalElection: return .danger
         case .transition: return .cyan
-        case .presidency, .lameDuck: return .green
+        case .presidency, .lameDuck: return .positive
         case .exited: return .gray
         }
     }
@@ -1836,10 +1836,10 @@ struct EconomicDashboard: View {
 
     var economicSentimentColor: Color {
         let health = computeEconomicHealth()
-        if health > 60 { return .green }
-        if health > 45 { return .blue }
-        if health > 30 { return .orange }
-        return .red
+        if health > 60 { return .positive }
+        if health > 45 { return .playerAccent }
+        if health > 30 { return .tossupAccent }
+        return .danger
     }
 
     func computeEconomicHealth() -> Double {
@@ -2803,10 +2803,10 @@ struct BriefingCard: View {
 
     private var urgencyColor: Color {
         switch briefing.urgency {
-        case 5: return .red
+        case 5: return .danger
         case 4: return .orange
-        case 3: return .yellow
-        default: return .green
+        case 3: return .tipAccent
+        default: return .positive
         }
     }
 }
@@ -3089,10 +3089,10 @@ struct BriefingDetailView: View {
 
     private var urgencyColor: Color {
         switch briefing.urgency {
-        case 5: return .red
+        case 5: return .danger
         case 4: return .orange
-        case 3: return .yellow
-        default: return .green
+        case 3: return .tipAccent
+        default: return .positive
         }
     }
 }
