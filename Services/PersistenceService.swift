@@ -22,7 +22,12 @@ class PersistenceService {
     }
 
     func save(_ gameState: GameState, filename: String? = nil) throws {
-        let name = filename ?? "save_\(Date().timeIntervalSince1970).json"
+        let name: String
+        if let fn = filename {
+            name = fn.hasSuffix(".json") ? fn : (fn + ".json")
+        } else {
+            name = "save_\(Date().timeIntervalSince1970).json"
+        }
         let url = saveDirectory.appendingPathComponent(name)
 
         let data = try encoder.encode(gameState)
@@ -30,7 +35,8 @@ class PersistenceService {
     }
 
     func load(filename: String) throws -> GameState {
-        let url = saveDirectory.appendingPathComponent(filename)
+        let fn = filename.hasSuffix(".json") ? filename : (filename + ".json")
+        let url = saveDirectory.appendingPathComponent(fn)
         let data = try Data(contentsOf: url)
         return try decoder.decode(GameState.self, from: data)
     }
@@ -55,7 +61,8 @@ class PersistenceService {
     }
 
     func delete(filename: String) throws {
-        let url = saveDirectory.appendingPathComponent(filename)
+        let fn = filename.hasSuffix(".json") ? filename : (filename + ".json")
+        let url = saveDirectory.appendingPathComponent(fn)
         try FileManager.default.removeItem(at: url)
     }
 }
