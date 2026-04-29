@@ -425,7 +425,8 @@ class SimulationEngine: ObservableObject {
                         self.gameState.world.actionResultsThisTurn.append(output.narrative)
                     }
                 } catch {
-                    // NPC modeling failed — skip silently, action already succeeded
+                    self.lastError = "NPC behavior modeling failed: \(error.localizedDescription)"
+                    print("[SimulationEngine] NPC modeling error: \(error)")
                 }
             }
         }
@@ -497,6 +498,8 @@ class SimulationEngine: ObservableObject {
                 // Apply AI-calculated effects
                 applyEffects(result.immediateEffects)
             } catch {
+                self.lastError = "AI consequence calculation failed: \(error.localizedDescription)"
+                print("[SimulationEngine] Consequence calculation error: \(error)")
                 narrative = "Your choice \(outcome.verbPhrase). The political landscape shifts accordingly."
                 consequences = []
             }
@@ -760,7 +763,8 @@ class SimulationEngine: ObservableObject {
                     gameState.world.actionResultsThisTurn.append(event.description)
                 }
             } catch {
-                // Silent fail - use simple event generation
+                self.lastError = "AI event generation failed: \(error.localizedDescription)"
+                print("[SimulationEngine] Event generation error: \(error)")
                 generateSimpleEvent()
             }
         }
