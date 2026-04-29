@@ -249,21 +249,41 @@ struct ContentView: View {
         let briefingTypes: [BriefingType] = [.campaign, .legislative, .diplomatic, .media, .administrative]
         let type = briefingTypes.randomElement()!
 
-        let briefingTemplates: [BriefingType: [(String, String, [String])]] = [
+        let briefingTemplates: [BriefingType: [(String, String, [BriefingOption])]] = [
             .campaign: [
-                ("Polling Results", "New internal polling shows movement in key states.", ["Review data", "Adjust strategy", "Ignore"]),
+                ("Polling Results", "New internal polling shows movement in key states.", [
+                    BriefingOption(label: "Review data", description: "Dive deep into the numbers and adjust your message accordingly.", pros: ["Better targeting", "Informed message"], cons: ["Takes time and resources", "May reveal bad news"]),
+                    BriefingOption(label: "Adjust strategy", description: "Shift campaign focus based on the latest numbers.", pros: ["Responsive to voters", "Can seize momentum"], cons: ["May alienate base", "Perceived as flip-flopping"]),
+                    BriefingOption(label: "Ignore", description: "Stick with your current plan and trust your instincts.", pros: ["Consistent message", "Saves resources"], cons: ["May miss warning signs", "Strategy could be off-target"]),
+                ]),
             ],
             .legislative: [
-                ("Congressional Interest", "Bipartisan group wants to meet about shared priorities.", ["Meet with them", "Send aide", "Decline"]),
+                ("Congressional Interest", "Bipartisan group wants to meet about shared priorities.", [
+                    BriefingOption(label: "Meet with them", description: "Accept the meeting and explore possible collaboration.", pros: ["Builds goodwill", "May produce legislation"], cons: ["Takes time", "May create obligations"]),
+                    BriefingOption(label: "Send aide", description: "Send a senior staffer to explore on your behalf.", pros: ["Stays informed", "Keeps options open"], cons: ["May seem dismissive", "No commitment conveyed"]),
+                    BriefingOption(label: "Decline", description: "Politely decline and focus on other priorities.", pros: ["Saves time", "Signals priorities"], cons: ["Burns bridges", "Missed opportunity"]),
+                ]),
             ],
             .diplomatic: [
-                ("Foreign Policy Update", "Allies are seeking clarity on your administration's stance.", ["Schedule call", "Send statement", "Defer"]),
+                ("Foreign Policy Update", "Allies are seeking clarity on your administration's stance.", [
+                    BriefingOption(label: "Schedule call", description: "Arrange a direct call with the foreign leader.", pros: ["Strong relationship signal", "Clear communication"], cons: ["Time-intensive", "May raise expectations"]),
+                    BriefingOption(label: "Send statement", description: "Issue a written statement through diplomatic channels.", pros: ["Official record", "Carefully worded"], cons: ["Less personal", "May seem impersonal"]),
+                    BriefingOption(label: "Defer", description: "Acknowledge but postpone until after other priorities.", pros: ["Focus on domestic agenda", "No rushed decision"], cons: ["Allies may feel neglected", "Uncertainty creates risk"]),
+                ]),
             ],
             .media: [
-                ("Interview Request", "Major network requests exclusive interview.", ["Accept", "Decline", "Offer surrogate"]),
+                ("Interview Request", "Major network requests exclusive interview.", [
+                    BriefingOption(label: "Accept", description: "Do the interview and speak directly to voters.", pros: ["Direct message", "Positive press"], cons: ["Risk of missteps", "Time commitment"]),
+                    BriefingOption(label: "Decline", description: "Pass on the opportunity.", pros: ["No risk", "Focus elsewhere"], cons: ["Missed coverage", "Seems evasive"]),
+                    BriefingOption(label: "Offer surrogate", description: "Send a senior advisor instead.", pros: ["Still in conversation", "Controlled message"], cons: ["Less impactful", "Network may be disappointed"]),
+                ]),
             ],
             .administrative: [
-                ("Transition Update", "Transition team reports on preparation progress.", ["Review report", "Schedule briefing", "Delegate"]),
+                ("Transition Update", "Transition team reports on preparation progress.", [
+                    BriefingOption(label: "Review report", description: "Study the full report in detail.", pros: ["Full picture", "Informed decisions"], cons: ["Takes significant time", "May reveal problems"]),
+                    BriefingOption(label: "Schedule briefing", description: "Get a verbal briefing from the team lead.", pros: ["Efficient", "Can ask questions"], cons: ["Less thorough", "Dependent on presenter"]),
+                    BriefingOption(label: "Delegate", description: "Assign a trusted aide to review and summarize.", pros: ["Frees your time", "Still covered"], cons: ["Secondhand info", "Aide may miss nuance"]),
+                ]),
             ]
         ]
 
@@ -275,7 +295,7 @@ struct ContentView: View {
                 urgency: Int.random(in: 1...5),
                 turnReceived: engine.gameState.world.currentTurn,
                 deadline: engine.gameState.world.currentTurn + Int.random(in: 2...5),
-                responseOptions: template.2
+                options: template.2
             )
             briefings.insert(newBriefing, at: 0)
             // Keep max 20 briefings
@@ -2527,7 +2547,11 @@ struct BriefingsView: View {
                 summary: "Intelligence reports that a foreign leader has expressed interest in direct talks with you.",
                 urgency: 2,
                 turnReceived: engine.gameState.world.currentTurn,
-                responseOptions: ["Schedule call", "Send emissary", "Delay response"]
+                options: [
+                    BriefingOption(label: "Schedule call", description: "Arrange a direct conversation with the leader.", pros: ["Strengthens relationship", "Signals engagement"], cons: ["Time commitment", "May create obligations"]),
+                    BriefingOption(label: "Send emissary", description: "Send a trusted representative to feel out the request.", pros: ["Information gathering", "Keeps options open"], cons: ["Less personal", "May frustrate the leader"]),
+                    BriefingOption(label: "Delay response", description: "Acknowledge but postpone to a later date.", pros: ["Buys time", "No commitment"], cons: ["Sends lukewarm signal", "May lose the opening"]),
+                ]
             ),
             Briefing(
                 type: .campaign,
@@ -2536,7 +2560,11 @@ struct BriefingsView: View {
                 urgency: 3,
                 turnReceived: engine.gameState.world.currentTurn,
                 deadline: engine.gameState.world.currentTurn + 2,
-                responseOptions: ["Attend personally", "Send surrogate", "Skip event"]
+                options: [
+                    BriefingOption(label: "Attend personally", description: "Show up and make the case directly.", pros: ["Maximizes fundraising", "Personal touch"], cons: ["Takes full day", "May overcommit to donor"]),
+                    BriefingOption(label: "Send surrogate", description: "Send your campaign manager or a close ally.", pros: ["Still captures goodwill", "Your time free"], cons: ["Less effective at fundraising", "Donor may be disappointed"]),
+                    BriefingOption(label: "Skip event", description: "Skip it entirely and focus on other priorities.", pros: ["Focus on message", "No donor entanglement"], cons: ["Major donor alienated", "Lost fundraising opportunity"]),
+                ]
             ),
             Briefing(
                 type: .legislative,
@@ -2544,7 +2572,11 @@ struct BriefingsView: View {
                 summary: "Your allies in Congress want to know if you'll campaign for them this cycle.",
                 urgency: 2,
                 turnReceived: engine.gameState.world.currentTurn,
-                responseOptions: ["Campaign actively", "Limited engagement", "Focus on own race"]
+                options: [
+                    BriefingOption(label: "Campaign actively", description: "Hit the trail hard for your allies.", pros: ["Strengthens relationships", "Helps their chances"], cons: ["Drains your time and energy", "Political risk if they lose"]),
+                    BriefingOption(label: "Limited engagement", description: "Make a few targeted appearances.", pros: ["Balanced approach", "Conserves resources"], cons: ["May disappoint allies", "Half-measures satisfy no one"]),
+                    BriefingOption(label: "Focus on own race", description: "Keep your powder dry and focus on your own campaign.", pros: ["Maximizes your energy", "No political baggage"], cons: ["Allies feel abandoned", "Weakens coalition"]),
+                ]
             )
         ]
         briefings = sampleBriefings
@@ -2811,21 +2843,78 @@ struct BriefingDetailView: View {
                 .frame(maxWidth: .infinity)
                 .background(Color.green.opacity(0.1))
                 .cornerRadius(8)
-            } else if !briefing.responseOptions.isEmpty {
+            } else if !briefing.options.isEmpty {
                 Divider()
 
-                Text("Response Options")
+                Text("Your Options")
                     .font(.headline)
 
-                ForEach(briefing.responseOptions, id: \.self) { option in
+                ForEach(briefing.options) { option in
                     Button(action: {
                         onRespond()
                         dismiss()
                     }) {
-                        HStack {
-                            Image(systemName: "arrow.right.circle")
-                            Text(option)
-                            Spacer()
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Image(systemName: "arrow.right.circle.fill")
+                                    .foregroundColor(.accentColor)
+                                Text(option.label)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Spacer()
+                            }
+
+                            if !option.description.isEmpty {
+                                Text(option.description)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .padding(.leading, 22)
+                            }
+
+                            if !option.pros.isEmpty || !option.cons.isEmpty {
+                                HStack(alignment: .top, spacing: 12) {
+                                    if !option.pros.isEmpty {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            HStack(spacing: 2) {
+                                                Image(systemName: "plus.circle.fill")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.green)
+                                                Text("Pros")
+                                                    .font(.caption2)
+                                                    .fontWeight(.semibold)
+                                                    .foregroundColor(.green)
+                                            }
+                                            ForEach(option.pros, id: \.self) { pro in
+                                                Text("• \(pro)")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.secondary)
+                                                    .padding(.leading, 14)
+                                            }
+                                        }
+                                    }
+
+                                    if !option.cons.isEmpty {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            HStack(spacing: 2) {
+                                                Image(systemName: "minus.circle.fill")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.red)
+                                                Text("Cons")
+                                                    .font(.caption2)
+                                                    .fontWeight(.semibold)
+                                                    .foregroundColor(.red)
+                                            }
+                                            ForEach(option.cons, id: \.self) { con in
+                                                Text("• \(con)")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.secondary)
+                                                    .padding(.leading, 14)
+                                            }
+                                        }
+                                    }
+                                }
+                                .padding(.leading, 22)
+                            }
                         }
                         .padding(10)
                         .background(Color(NSColor.controlBackgroundColor))

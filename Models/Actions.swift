@@ -290,6 +290,28 @@ enum BriefingType: String, Codable {
     case administrative = "Administrative"
 }
 
+struct BriefingOption: Codable, Identifiable {
+    let id: UUID
+    let label: String
+    let description: String
+    let pros: [String]
+    let cons: [String]
+
+    init(
+        id: UUID = UUID(),
+        label: String,
+        description: String = "",
+        pros: [String] = [],
+        cons: [String] = []
+    ) {
+        self.id = id
+        self.label = label
+        self.description = description
+        self.pros = pros
+        self.cons = cons
+    }
+}
+
 struct Briefing: Codable, Identifiable {
     let id: UUID
     let type: BriefingType
@@ -300,7 +322,7 @@ struct Briefing: Codable, Identifiable {
     let deadline: Int? // turn by which to respond
     var isRead: Bool
     var isResolved: Bool
-    let responseOptions: [String]
+    let options: [BriefingOption]
     var requiresResponse: Bool { deadline != nil && !isResolved }
 
     init(
@@ -313,7 +335,7 @@ struct Briefing: Codable, Identifiable {
         deadline: Int? = nil,
         isRead: Bool = false,
         isResolved: Bool = false,
-        responseOptions: [String] = []
+        options: [BriefingOption] = []
     ) {
         self.id = id
         self.type = type
@@ -324,7 +346,7 @@ struct Briefing: Codable, Identifiable {
         self.deadline = deadline
         self.isRead = isRead
         self.isResolved = isResolved
-        self.responseOptions = responseOptions
+        self.options = options
     }
 }
 
