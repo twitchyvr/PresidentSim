@@ -24,8 +24,12 @@ struct WorldState: Codable {
 
     // News & Narrative
     var newsCyclePhase: NewsCyclePhase
-    var currentNarrative: String
+    var actionResultsThisTurn: [String]
     var trendingTopic: String
+
+    var currentNarrative: String {
+        actionResultsThisTurn.last ?? "Your journey awaits..."
+    }
 
     // Time
     var currentTurn: Int // 1 turn = 1 week
@@ -59,7 +63,7 @@ struct WorldState: Codable {
         self.internationalPrestige = 60.0
 
         self.newsCyclePhase = .rising
-        self.currentNarrative = "A new chapter in American politics begins."
+        self.actionResultsThisTurn = []
         self.trendingTopic = "Election 2028"
 
         self.currentTurn = 1
@@ -80,11 +84,14 @@ struct WorldState: Codable {
     }
 
     var turnDescription: String {
-        let month = (currentTurn % 52) / 4 + 1
+        // 52 weeks per year, 4 turns per month (13 months with 1 overlap at year boundary)
+        let monthIndex = (((currentTurn - 1) % 52) / 4) % 12
         let monthName = ["January", "February", "March", "April", "May", "June",
-                        "July", "August", "September", "October", "November", "December"][month - 1]
-        let week = (currentTurn % 13) + 1
-        return "\(monthName), Week \(week), \(currentYear)"
+                        "July", "August", "September", "October", "November", "December"][monthIndex]
+        let week = ((currentTurn - 1) % 13) + 1
+        // Turns 1-52 = year 0, 53-104 = year 1, etc.
+        let displayYear = currentYear + (currentTurn - 1) / 52
+        return "\(monthName), Week \(week), \(displayYear)"
     }
 }
 

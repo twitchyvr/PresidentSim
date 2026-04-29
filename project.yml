@@ -44,3 +44,18 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks"
         SWIFT_EMIT_LOC_STRINGS: YES
+
+  PresidentSimTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: PresidentSim
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.presidentsim.tests
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_NAME: PresidentSimTests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/PresidentSim.app/Contents/MacOS/PresidentSim"
+        BUNDLE_LOADER: "$(TEST_HOST)"

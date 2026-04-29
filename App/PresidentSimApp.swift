@@ -13,6 +13,30 @@ private func formatCompactCurrency(_ amount: Double) -> String {
     return String(format: "%.0f", amount)
 }
 
+/// Maps camelCase internal effect keys to human-readable labels for UI display
+private func humanReadableKey(_ key: String) -> String {
+    switch key {
+    case "approvalRating": return "Approval"
+    case "congressionalSupport": return "Congress"
+    case "partyUnityScore": return "Party Unity"
+    case "momentum": return "Momentum"
+    case "mediaFavorability": return "Media"
+    case "campaignFunds": return "Funds"
+    case "statePolling": return "State Poll"
+    case "opponentPolling": return "Opponent Poll"
+    case "globalInfluence": return "Global Influence"
+    case "relationshipTarget": return "Diplomatic Relations"
+    case "cabinetSatisfaction": return "Cabinet"
+    case "donorSatisfaction": return "Donors"
+    case "gdpGrowth": return "GDP"
+    case "inflation": return "Inflation"
+    case "unemployment": return "Jobs"
+    case "internationalPrestige": return "Prestige"
+    case "politicalCapital": return "Pol. Capital"
+    default: return key.replacingOccurrences(of: "([a-z])([A-Z])", with: "$1 $2", options: .regularExpression).capitalized
+    }
+}
+
 @main
 struct PresidentSimApp: App {
     @StateObject private var engine = SimulationEngine()
@@ -39,13 +63,13 @@ struct ContentView: View {
     @State private var newsTickerText = ""
     @State private var showCommandCenter = false
     @State private var showBriefings = false
-    @State private var briefings: [Briefing] = []
+    @State private var showSaveLoad = false
 
     var body: some View {
         VStack(spacing: 0) {
             // News ticker
             if !newsTickerText.isEmpty {
-                NewsTickerView(text: newsTickerText)
+                NewsTickerView(text: newsTickerText, trendingTopic: engine.gameState.world.trendingTopic)
             }
 
             // Top bar
@@ -80,6 +104,17 @@ struct ContentView: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundColor(showBriefings ? .orange : .blue)
+
+                    Divider().frame(height: 16)
+
+                    Button(action: { showSaveLoad.toggle() }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "square.and.arrow.down.on.square")
+                            Text("Save/Load")
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundColor(showSaveLoad ? .orange : .blue)
                 }
 
                 Spacer()
@@ -136,14 +171,17 @@ struct ContentView: View {
                 .environmentObject(engine)
         }
         .sheet(isPresented: $showBriefings) {
-            BriefingsView(briefings: $briefings)
+            BriefingsView()
                 .environmentObject(engine)
+        }
+        .sheet(isPresented: $showSaveLoad) {
+            SaveLoadView(engine: engine)
         }
         .onAppear {
             loadAPIKeyIfNeeded()
             updateNewsTicker()
         }
-        .onChange(of: engine.gameState.world.currentNarrative) { _, _ in
+        .onChange(of: engine.gameState.world.actionResultsThisTurn.count) { _, _ in
             updateNewsTicker()
         }
     }
@@ -199,12 +237,12 @@ struct ContentView: View {
     }
 
     private func updateNewsTicker() {
-        let narrative = engine.gameState.world.currentNarrative
+        let actionResults = engine.gameState.world.actionResultsThisTurn
         let recentEvents = engine.gameState.activeEvents.prefix(2)
         var tickerParts: [String] = []
 
-        if !narrative.isEmpty && narrative != "Your journey awaits..." {
-            tickerParts.append(narrative)
+        if !actionResults.isEmpty {
+            tickerParts.append(contentsOf: actionResults)
         }
 
         for event in recentEvents {
@@ -215,9 +253,9 @@ struct ContentView: View {
     }
 
     private func loadAPIKeyIfNeeded() {
-        if let envPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("GitRepos/Overlord-v2/.env").path as String?,
-           let content = try? String(contentsOfFile: envPath),
+        let envPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".PresidentSim/env").path
+        if let content = try? String(contentsOfFile: envPath),
            let keyRange = content.range(of: "MINIMAX_API_KEY=") {
 
             let start = keyRange.upperBound
@@ -234,21 +272,41 @@ struct ContentView: View {
         let briefingTypes: [BriefingType] = [.campaign, .legislative, .diplomatic, .media, .administrative]
         let type = briefingTypes.randomElement()!
 
-        let briefingTemplates: [BriefingType: [(String, String, [String])]] = [
+        let briefingTemplates: [BriefingType: [(String, String, [BriefingOption])]] = [
             .campaign: [
-                ("Polling Results", "New internal polling shows movement in key states.", ["Review data", "Adjust strategy", "Ignore"]),
+                ("Polling Results", "New internal polling shows movement in key states.", [
+                    BriefingOption(label: "Review data", description: "Dive deep into the numbers and adjust your message accordingly.", pros: ["Better targeting", "Informed message"], cons: ["Takes time and resources", "May reveal bad news"]),
+                    BriefingOption(label: "Adjust strategy", description: "Shift campaign focus based on the latest numbers.", pros: ["Responsive to voters", "Can seize momentum"], cons: ["May alienate base", "Perceived as flip-flopping"]),
+                    BriefingOption(label: "Ignore", description: "Stick with your current plan and trust your instincts.", pros: ["Consistent message", "Saves resources"], cons: ["May miss warning signs", "Strategy could be off-target"]),
+                ]),
             ],
             .legislative: [
-                ("Congressional Interest", "Bipartisan group wants to meet about shared priorities.", ["Meet with them", "Send aide", "Decline"]),
+                ("Congressional Interest", "Bipartisan group wants to meet about shared priorities.", [
+                    BriefingOption(label: "Meet with them", description: "Accept the meeting and explore possible collaboration.", pros: ["Builds goodwill", "May produce legislation"], cons: ["Takes time", "May create obligations"]),
+                    BriefingOption(label: "Send aide", description: "Send a senior staffer to explore on your behalf.", pros: ["Stays informed", "Keeps options open"], cons: ["May seem dismissive", "No commitment conveyed"]),
+                    BriefingOption(label: "Decline", description: "Politely decline and focus on other priorities.", pros: ["Saves time", "Signals priorities"], cons: ["Burns bridges", "Missed opportunity"]),
+                ]),
             ],
             .diplomatic: [
-                ("Foreign Policy Update", "Allies are seeking clarity on your administration's stance.", ["Schedule call", "Send statement", "Defer"]),
+                ("Foreign Policy Update", "Allies are seeking clarity on your administration's stance.", [
+                    BriefingOption(label: "Schedule call", description: "Arrange a direct call with the foreign leader.", pros: ["Strong relationship signal", "Clear communication"], cons: ["Time-intensive", "May raise expectations"]),
+                    BriefingOption(label: "Send statement", description: "Issue a written statement through diplomatic channels.", pros: ["Official record", "Carefully worded"], cons: ["Less personal", "May seem impersonal"]),
+                    BriefingOption(label: "Defer", description: "Acknowledge but postpone until after other priorities.", pros: ["Focus on domestic agenda", "No rushed decision"], cons: ["Allies may feel neglected", "Uncertainty creates risk"]),
+                ]),
             ],
             .media: [
-                ("Interview Request", "Major network requests exclusive interview.", ["Accept", "Decline", "Offer surrogate"]),
+                ("Interview Request", "Major network requests exclusive interview.", [
+                    BriefingOption(label: "Accept", description: "Do the interview and speak directly to voters.", pros: ["Direct message", "Positive press"], cons: ["Risk of missteps", "Time commitment"]),
+                    BriefingOption(label: "Decline", description: "Pass on the opportunity.", pros: ["No risk", "Focus elsewhere"], cons: ["Missed coverage", "Seems evasive"]),
+                    BriefingOption(label: "Offer surrogate", description: "Send a senior advisor instead.", pros: ["Still in conversation", "Controlled message"], cons: ["Less impactful", "Network may be disappointed"]),
+                ]),
             ],
             .administrative: [
-                ("Transition Update", "Transition team reports on preparation进度.", ["Review report", "Schedule briefing", "Delegate"]),
+                ("Transition Update", "Transition team reports on preparation progress.", [
+                    BriefingOption(label: "Review report", description: "Study the full report in detail.", pros: ["Full picture", "Informed decisions"], cons: ["Takes significant time", "May reveal problems"]),
+                    BriefingOption(label: "Schedule briefing", description: "Get a verbal briefing from the team lead.", pros: ["Efficient", "Can ask questions"], cons: ["Less thorough", "Dependent on presenter"]),
+                    BriefingOption(label: "Delegate", description: "Assign a trusted aide to review and summarize.", pros: ["Frees your time", "Still covered"], cons: ["Secondhand info", "Aide may miss nuance"]),
+                ]),
             ]
         ]
 
@@ -260,18 +318,14 @@ struct ContentView: View {
                 urgency: Int.random(in: 1...5),
                 turnReceived: engine.gameState.world.currentTurn,
                 deadline: engine.gameState.world.currentTurn + Int.random(in: 2...5),
-                responseOptions: template.2
+                options: template.2
             )
-            briefings.insert(newBriefing, at: 0)
-            // Keep max 20 briefings
-            if briefings.count > 20 {
-                briefings.removeLast()
-            }
+            engine.insertBriefing(newBriefing)
         }
     }
 
     private var unreadBriefingsCount: Int {
-        briefings.filter { !$0.isRead }.count
+        engine.unreadBriefingsCount
     }
 }
 
@@ -381,7 +435,7 @@ struct PlayerInfoSidebar: View {
                                 Text("Momentum")
                                     .font(.caption)
                                 Spacer()
-                                MomentumIndicator(momentum: engine.gameState.campaignMomentum)
+                                MomentumIndicator(momentum: engine.gameState.resources.momentum)
                             }
 
                             Divider()
@@ -483,6 +537,7 @@ struct CandidateStatBar: View {
                 Text(label)
                     .font(.caption2)
                     .foregroundColor(.secondary)
+                    .help(statTooltip)
                 Spacer()
                 Text(String(format: "%.0f", value))
                     .font(.caption2)
@@ -502,6 +557,15 @@ struct CandidateStatBar: View {
                 }
             }
             .frame(height: 4)
+        }
+    }
+
+    private var statTooltip: String {
+        switch label {
+        case "Charisma": return "Charisma: Ability to connect with voters and inspire crowds. High charisma helps in speeches, debates, and campaign rallies."
+        case "Intelligence": return "Intelligence: Mental acuity and policy understanding. Affects negotiation outcomes and crisis decision quality."
+        case "Willpower": return "Willpower: Determination and resilience under pressure. Helps resist scandals, survive crises, and push through opposition."
+        default: return label
         }
     }
 }
@@ -536,6 +600,7 @@ struct ApprovalGaugeView: View {
                 }
             }
             .frame(width: 80, height: 80)
+            .help("Approval Rating: Percentage of Americans who approve of your performance. Above 60% is strong; below 40% is weak. Affects electoral prospects, congressional leverage, and media coverage.")
 
             Text(approvalDescription)
                 .font(.caption2)
@@ -568,6 +633,7 @@ struct MomentumIndicator: View {
         .padding(.vertical, 2)
         .background(momentumColor.opacity(0.1))
         .cornerRadius(4)
+        .help("Campaign Momentum: Positive values mean your campaign is gaining energy and poll movement. Negative values mean you are losing ground. Above 2 or below -2 indicates significant shifts.")
     }
 
     var momentumIcon: String {
@@ -657,6 +723,7 @@ struct PoliticalCapitalGauge: View {
                 Text("Political Capital")
                     .font(.caption2)
                     .foregroundColor(.secondary)
+                    .help("Political Capital: The currency of governance. Used to pass legislation, make appointments, and negotiate with Congress. Regenerates slowly over time. Spent on major actions.")
                 Spacer()
                 Text("\(Int(capital))/\(Int(maxCapital))")
                     .font(.caption2)
@@ -740,6 +807,7 @@ struct StatRow: View {
                 Text(label)
                     .font(.caption2)
                     .foregroundColor(.secondary)
+                    .help(statTooltip)
                 Spacer()
                 Text(String(format: "%.1f", value))
                     .font(.caption2)
@@ -758,6 +826,14 @@ struct StatRow: View {
                 }
             }
             .frame(height: 4)
+        }
+    }
+
+    private var statTooltip: String {
+        switch label {
+        case "Congressional Support": return "Congressional Support: How well you work with Congress. Above 60 means easier legislation passage. Below 40 means obstruction and gridlock."
+        case "Party Unity": return "Party Unity: How united your party is behind you. High unity helps in elections and legislating. Low unity risks primary challenges and defections."
+        default: return label
         }
     }
 }
@@ -782,12 +858,20 @@ struct EventSidebar: View {
                                 .padding(.top, 6)
 
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Current Situation")
+                                Text("This Turn's Actions")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
-                                Text(engine.gameState.world.currentNarrative)
-                                    .font(.caption)
-                                    .foregroundColor(.primary)
+                                if engine.gameState.world.actionResultsThisTurn.isEmpty {
+                                    Text("No actions taken yet.")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    ForEach(engine.gameState.world.actionResultsThisTurn, id: \.self) { result in
+                                        Text(result)
+                                            .font(.caption)
+                                            .foregroundColor(.primary)
+                                    }
+                                }
                             }
                         }
 
@@ -893,8 +977,8 @@ struct SituationFeedItem: View {
 
                 if !entry.effects.isEmpty {
                     HStack(spacing: 4) {
-                        ForEach(Array(entry.effects.prefix(2)), id: \.key) { effect in
-                            Text("\(effect.key): \(effect.value >= 0 ? "+" : "")\(Int(effect.value))")
+                        ForEach(Array(entry.effects.prefix(4)), id: \.key) { effect in
+                            Text("\(humanReadableKey(effect.key)): \(effect.value >= 0 ? "+" : "")\(Int(effect.value))")
                                 .font(.caption2)
                                 .foregroundColor(effect.value >= 0 ? .green : .red)
                                 .padding(.horizontal, 4)
@@ -924,7 +1008,8 @@ struct SituationFeedItem: View {
 struct DecisionCard: View {
     @EnvironmentObject var engine: SimulationEngine
     let decision: Decision
-    @State private var selectedIndex: Int? = nil
+    @State private var pendingIndex: Int? = nil
+    @State private var showConfirmation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -938,10 +1023,8 @@ struct DecisionCard: View {
 
             ForEach(Array(decision.options.enumerated()), id: \.element.id) { index, option in
                 Button(action: {
-                    selectedIndex = index
-                    Task {
-                        await engine.makeDecision(decision, choiceIndex: index)
-                    }
+                    pendingIndex = index
+                    showConfirmation = true
                 }) {
                     HStack {
                         Text(option.text)
@@ -955,10 +1038,40 @@ struct DecisionCard: View {
                         }
                     }
                     .padding(6)
-                    .background(selectedIndex == index ? Color.accentColor.opacity(0.3) : Color.clear)
+                    .background(pendingIndex == index ? Color.accentColor.opacity(0.3) : Color.clear)
                     .cornerRadius(4)
                 }
                 .buttonStyle(.plain)
+            }
+
+            if showConfirmation, let idx = pendingIndex {
+                VStack(spacing: 6) {
+                    Text("Are you sure?")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+
+                    HStack(spacing: 8) {
+                        Button("Confirm") {
+                            Task {
+                                await engine.makeDecision(decision, choiceIndex: idx)
+                            }
+                            showConfirmation = false
+                            pendingIndex = nil
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+
+                        Button("Cancel", role: .cancel) {
+                            showConfirmation = false
+                            pendingIndex = nil
+                        }
+                        .controlSize(.small)
+                    }
+                }
+                .padding(8)
+                .background(Color(NSColor.selectedContentBackgroundColor).opacity(0.15))
+                .cornerRadius(6)
             }
         }
         .padding(8)
@@ -978,6 +1091,7 @@ struct EventCard: View {
                 RoundedRectangle(cornerRadius: 2)
                     .fill(categoryColor)
                     .frame(width: 4, height: 35)
+                    .help(categoryTooltip)
 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack {
@@ -1004,7 +1118,8 @@ struct EventCard: View {
                     Text(event.description)
                         .font(.caption2)
                         .foregroundColor(.secondary)
-                        .lineLimit(2)
+                        .lineLimit(4)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Spacer()
@@ -1043,6 +1158,19 @@ struct EventCard: View {
         case .scandal: return .pink
         case .achievement: return .yellow
         case .personal: return .gray
+        }
+    }
+
+    var categoryTooltip: String {
+        switch event.category {
+        case .economic: return "Economic: An event affecting GDP, jobs, inflation, or markets."
+        case .political: return "Political: An event related to Congress, elections, or party politics."
+        case .international: return "International: A foreign policy event involving other nations or global affairs."
+        case .social: return "Social: A cultural or societal event affecting public values and demographics."
+        case .crisis: return "Crisis: A urgent event requiring immediate leadership attention."
+        case .scandal: return "Scandal: A controversy or damaging revelation about you or your administration."
+        case .achievement: return "Achievement: A positive accomplishment that boosts your standing."
+        case .personal: return "Personal: A private or biographical event affecting you or your family."
         }
     }
 }
@@ -1701,6 +1829,7 @@ struct EconomicIndicator: View {
             Text(label)
                 .font(.caption2)
                 .foregroundColor(.secondary)
+                .help(tooltip)
 
             HStack(spacing: 4) {
                 Text(String(format: format, value))
@@ -1709,13 +1838,26 @@ struct EconomicIndicator: View {
                     .foregroundColor(isGood ? .primary : .red)
 
                 if trend != 0 {
+                    let goodTrend: Bool = isPositiveGood ? trend > 0 : trend < 0
                     Image(systemName: trend > 0 ? "arrow.up.right" : "arrow.down.right")
                         .font(.caption2)
-                        .foregroundColor(trend > 0 ? .green : .red)
+                        .foregroundColor(goodTrend ? .green : .red)
                 }
             }
         }
         .frame(minWidth: 80)
+    }
+
+    private var tooltip: String {
+        switch label {
+        case "GDP Growth": return "GDP Growth: Annual percentage change in Gross Domestic Product. Above 2% indicates a healthy economy. Negative growth signals recession."
+        case "Unemployment": return "Unemployment: Percentage of the workforce seeking a job. Below 5% is full employment. Above 8% is a serious recession."
+        case "Inflation": return "Inflation: Annual price increase rate. 2-3% is healthy. Above 6% causes political damage. Above 10% is a crisis."
+        case "Consumer Conf.": return "Consumer Confidence: Index measuring public optimism about the economy. Above 70 is strong. Below 50 signals recession."
+        case "Stock Market": return "Stock Market: Indexed value of major exchanges. Reflects investor confidence in future economic conditions."
+        case "National Debt": return "National Debt: Total federal borrowing in trillions. High debt limits future fiscal flexibility."
+        default: return label
+        }
     }
 }
 
@@ -1723,6 +1865,7 @@ struct EconomicIndicator: View {
 
 struct NewsTickerView: View {
     let text: String
+    let trendingTopic: String
     @State private var offset: CGFloat = 0
 
     var body: some View {
@@ -1742,16 +1885,20 @@ struct NewsTickerView: View {
                     .foregroundColor(.secondary)
                     .lineLimit(1)
 
-                Text("  •  " + text)
+                Text("  •  ")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                Text(trendingTopic)
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
             }
             .offset(x: offset)
             .onAppear {
-                let textWidth = text.count * 7
-                withAnimation(.linear(duration: Double(textWidth) / 30).repeatForever(autoreverses: false)) {
-                    offset = -CGFloat(textWidth + 100)
+                let fullWidth = (text.count + trendingTopic.count) * 7
+                withAnimation(.linear(duration: Double(fullWidth) / 30).repeatForever(autoreverses: false)) {
+                    offset = -CGFloat(fullWidth + 100)
                 }
             }
         }
@@ -1959,6 +2106,16 @@ struct CommandCenterView: View {
     @Environment(\.dismiss) var dismiss
     @State private var selectedCategory: ActionCategory?
 
+    // Speech editing state
+    @State private var isEditingSpeech = false
+    @State private var speechText = ""
+    @State private var isGeneratingSpeech = false
+    @State private var selectedSpeechType = "campaign"
+    @State private var selectedTone = "soaring"
+
+    private let speechTypes = ["campaign", "inaugural", "state_of_union", "crisis", "press_conference"]
+    private let speechTones = ["soaring", "solemn", "urgent", "reassuring"]
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -2022,7 +2179,11 @@ struct CommandCenterView: View {
             ScrollView {
                 LazyVStack(spacing: 8) {
                     ForEach(filteredActions) { action in
-                        ActionCard(action: action) {
+                        ActionCard(
+                            action: action,
+                            isDisabled: !isActionAvailable(action),
+                            cooldownRemaining: cooldownRemaining(for: action)
+                        ) {
                             performAction(action)
                         }
                     }
@@ -2031,6 +2192,29 @@ struct CommandCenterView: View {
             }
         }
         .frame(width: 600, height: 500)
+        .sheet(isPresented: $isEditingSpeech) {
+            SpeechEditorSheet(
+                speechText: $speechText,
+                selectedSpeechType: $selectedSpeechType,
+                selectedTone: $selectedTone,
+                speechTypes: speechTypes,
+                speechTones: speechTones,
+                isGenerating: isGeneratingSpeech,
+                onDeliver: {
+                    // Costs and effects already applied when action was selected
+                    SpeechService.shared.speakDraftSpeech(speechText)
+                    engine.gameState.world.actionResultsThisTurn.append("You delivered a \(selectedSpeechType.replacingOccurrences(of: "_", with: " ")) speech.")
+                    isEditingSpeech = false
+                },
+                onGenerate: {
+                    generateAISpeech()
+                },
+                onCancel: {
+                    // Costs already deducted when action was selected — no refund
+                    isEditingSpeech = false
+                }
+            )
+        }
     }
 
     private var filteredActions: [GameAction] {
@@ -2042,35 +2226,63 @@ struct CommandCenterView: View {
     }
 
     private func performAction(_ action: GameAction) {
-        // Apply action effects immediately (simplified - AI would calculate consequences)
-        for (key, value) in action.effects {
-            switch key {
-            case "mediaFavorability":
-                engine.gameState.world.mediaFavorability += value
-            case "approvalRating":
-                engine.gameState.world.approvalRating = max(0, min(100, engine.gameState.world.approvalRating + value))
-            case "momentum":
-                engine.gameState.campaignMomentum += value
-            case "congressionalSupport":
-                engine.gameState.world.congressionalSupport = max(0, min(100, engine.gameState.world.congressionalSupport + value))
-            case "partyUnityScore":
-                engine.gameState.world.partyUnityScore = max(0, min(100, engine.gameState.world.partyUnityScore + value))
-            case "campaignFunds":
-                engine.gameState.resources.campaignFunds += value
-            case "globalInfluence":
-                engine.gameState.world.globalInfluence += value
-            case "statePolling":
-                engine.gameState.popularVoteMargin += value
-            default:
-                break
+        // Guard: check if action can be performed
+        if !engine.canPerformAction(action) {
+            if engine.cooldownRemaining(for: action) > 0 {
+                engine.gameState.world.actionResultsThisTurn.append("\(action.name) is on cooldown.")
             }
+            return
         }
 
-        // Show brief feedback
-        engine.gameState.world.currentNarrative = "You used: \(action.name)"
+        // Let engine handle cost deduction, effects, and cooldown
+        engine.performAction(action)
 
-        // Dismiss after action
-        dismiss()
+        // Special case: "Make Speech" opens the editor
+        if action.name == "Make Speech" {
+            speechText = "My fellow Americans, we stand at a pivotal moment in our nation's history. Together, we will build a stronger economy, unite our people, and secure a brighter future for generations to come."
+            isEditingSpeech = true
+        }
+    }
+
+    private func isActionAvailable(_ action: GameAction) -> Bool {
+        engine.canPerformAction(action)
+    }
+
+    private func cooldownRemaining(for action: GameAction) -> Int {
+        engine.cooldownRemaining(for: action)
+    }
+
+    private func generateAISpeech() {
+        guard let aiBrain = engine.aiBrain else {
+            speechText = "AI brain not available. Please enter your speech manually."
+            return
+        }
+
+        isGeneratingSpeech = true
+        speechText = ""
+
+        let gameSummary = engine.gameState.toAISummary()
+        let input = MiniMaxService.SpeechInput(
+            speechType: selectedSpeechType,
+            gameState: gameSummary,
+            topic: engine.gameState.world.trendingTopic.isEmpty ? "the state of the nation" : engine.gameState.world.trendingTopic,
+            tone: selectedTone
+        )
+
+        Task {
+            do {
+                let output = try await aiBrain.generateSpeech(input: input)
+                await MainActor.run {
+                    self.speechText = output.draftSpeech
+                    self.isGeneratingSpeech = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.speechText = "Failed to generate speech: \(error.localizedDescription)\n\nPlease enter your speech manually."
+                    self.isGeneratingSpeech = false
+                }
+            }
+        }
     }
 
     private func formatMoney(_ amount: Double) -> String {
@@ -2098,6 +2310,7 @@ struct ResourcePill: View {
                 Text(label)
                     .font(.caption2)
                     .foregroundColor(.secondary)
+                    .help(resourceTooltip)
                 Text(value)
                     .font(.caption)
                     .fontWeight(.medium)
@@ -2107,6 +2320,15 @@ struct ResourcePill: View {
         .padding(.vertical, 4)
         .background(color.opacity(0.1))
         .cornerRadius(8)
+    }
+
+    private var resourceTooltip: String {
+        switch label {
+        case "Political Capital": return "Political Capital: The currency of governance. Used for major actions. Regenerates over time."
+        case "Campaign Funds": return "Campaign Funds: Money available for campaign activities. Raised through donors and events. Spent on rallies, ads, and travel."
+        case "Media Cycles": return "Media Cycles: Number of news cycles you can dominate. Each major action consumes a cycle. Refreshes weekly."
+        default: return label
+        }
     }
 }
 
@@ -2130,6 +2352,7 @@ struct CategoryTab: View {
             .cornerRadius(8)
         }
         .buttonStyle(.plain)
+        .help(categoryTooltip)
     }
 
     private var categoryIcon: String {
@@ -2142,11 +2365,152 @@ struct CategoryTab: View {
         case .personnel: return "person.badge.key.fill"
         }
     }
+
+    private var categoryTooltip: String {
+        switch category {
+        case .communication: return "Communication: Speeches, interviews, press conferences, and statements. Shapes media narrative and public opinion."
+        case .travel: return "Travel: Campaign rallies, swing state visits, and diplomatic trips. Builds momentum and visibility."
+        case .diplomatic: return "Diplomatic: Meetings with foreign leaders, state dinners, and summits. Affects international relationships."
+        case .executive: return "Executive: Orders, vetoes, legislation signing. High-impact presidential powers but use sparingly."
+        case .political: return "Political: Fundraising, negotiations, and base rallying. Essential for campaign and governing."
+        case .personnel: return "Personnel: Cabinet meetings, advisor consultations, and staffing decisions. Shapes your administration."
+        }
+    }
+}
+
+// MARK: - Speech Editor Sheet
+
+struct SpeechEditorSheet: View {
+    @Binding var speechText: String
+    @Binding var selectedSpeechType: String
+    @Binding var selectedTone: String
+    let speechTypes: [String]
+    let speechTones: [String]
+    let isGenerating: Bool
+    let onDeliver: () -> Void
+    let onGenerate: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Compose Speech")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                Spacer()
+                Button("Cancel") {
+                    onCancel()
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding()
+            .background(Color(NSColor.controlBackgroundColor))
+
+            Divider()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Speech type and tone pickers
+                    HStack(spacing: 20) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Speech Type")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Picker("", selection: $selectedSpeechType) {
+                                ForEach(speechTypes, id: \.self) { type in
+                                    Text(type.replacingOccurrences(of: "_", with: " ").capitalized).tag(type)
+                                }
+                            }
+                            .labelsHidden()
+                            .frame(width: 180)
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Tone")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Picker("", selection: $selectedTone) {
+                                ForEach(speechTones, id: \.self) { tone in
+                                    Text(tone.capitalized).tag(tone)
+                                }
+                            }
+                            .labelsHidden()
+                            .frame(width: 140)
+                        }
+
+                        Button(action: onGenerate) {
+                            HStack {
+                                if isGenerating {
+                                    ProgressView()
+                                        .scaleEffect(0.6)
+                                        .fixedSize()
+                                } else {
+                                    Image(systemName: "wand.and.stars")
+                                }
+                                Text(isGenerating ? "Generating..." : "AI Generate")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isGenerating)
+
+                        Spacer()
+                    }
+
+                    // Speech text editor
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Speech Text")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        if isGenerating && speechText.isEmpty {
+                            HStack {
+                                ProgressView()
+                                Text("Generating your speech with AI...")
+                                    .foregroundColor(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 8)
+                        } else {
+                            TextEditor(text: $speechText)
+                                .font(.body)
+                                .frame(minHeight: 200)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(Color(NSColor.separatorColor), lineWidth: 1)
+                                )
+                        }
+                    }
+                }
+                .padding()
+            }
+
+            Divider()
+
+            // Action buttons
+            HStack {
+                Text("\(speechText.split(separator: " ").count) words")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button("Deliver Speech") {
+                    onDeliver()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(speechText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            .padding()
+        }
+        .frame(width: 580, height: 480)
+    }
 }
 
 struct ActionCard: View {
     let action: GameAction
+    let isDisabled: Bool
+    let cooldownRemaining: Int
     let onPerform: () -> Void
+    @State private var isLoading = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -2155,6 +2519,7 @@ struct ActionCard: View {
                     Text(action.name)
                         .font(.subheadline)
                         .fontWeight(.medium)
+                        .foregroundColor((isDisabled || isLoading) ? .secondary : .primary)
 
                     Text(action.category.rawValue)
                         .font(.caption2)
@@ -2163,11 +2528,18 @@ struct ActionCard: View {
 
                 Spacer()
 
-                Button("Perform") {
+                Button(action.name == "Make Speech" ? "Write Speech" : "Perform") {
+                    guard !isLoading else { return }
+                    isLoading = true
                     onPerform()
+                    // Brief guard period to prevent double-tap
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        isLoading = false
+                    }
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
+                .disabled(isDisabled || isLoading)
             }
 
             Text(action.description)
@@ -2189,11 +2561,25 @@ struct ActionCard: View {
                     .padding(.vertical, 2)
                     .background(Color.orange.opacity(0.1))
                     .cornerRadius(4)
+                    .help(costTooltip(cost.type))
                 }
 
                 Spacer()
 
-                if action.cooldown > 0 {
+                if cooldownRemaining > 0 {
+                    HStack(spacing: 2) {
+                        Image(systemName: "clock")
+                            .font(.caption2)
+                        Text("\(cooldownRemaining) turn\(cooldownRemaining == 1 ? "" : "s") left")
+                            .font(.caption2)
+                    }
+                    .foregroundColor(.red)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(4)
+                    .help("This action is on cooldown and cannot be used again for \(cooldownRemaining) more turn\(cooldownRemaining == 1 ? "" : "s").")
+                } else if action.cooldown > 0 {
                     HStack(spacing: 2) {
                         Image(systemName: "clock")
                             .font(.caption2)
@@ -2201,12 +2587,14 @@ struct ActionCard: View {
                             .font(.caption2)
                     }
                     .foregroundColor(.secondary)
+                    .help("Using this action will put it on cooldown for \(action.cooldown) turn\(action.cooldown == 1 ? "" : "s").")
                 }
             }
         }
         .padding(12)
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(8)
+        .opacity(isDisabled ? 0.6 : 1.0)
     }
 
     private func costIcon(_ type: ActionCostType) -> String {
@@ -2217,15 +2605,27 @@ struct ActionCard: View {
         case .mediaCycle: return "tv"
         }
     }
+
+    private func costTooltip(_ type: ActionCostType) -> String {
+        switch type {
+        case .politicalCapital: return "Political Capital: The main resource for governing actions. Regenerates over time."
+        case .time: return "Time: How many weekly turns this action consumes. Time is limited each week."
+        case .money: return "Campaign Funds: Money spent on this action. Fundraising can replenish it."
+        case .mediaCycle: return "Media Cycle: News cycle attention. Limited per week. High-value actions consume cycles."
+        }
+    }
 }
 
 // MARK: - Briefings View
 
 struct BriefingsView: View {
-    @Binding var briefings: [Briefing]
     @EnvironmentObject var engine: SimulationEngine
     @Environment(\.dismiss) var dismiss
     @State private var selectedBriefing: Briefing?
+
+    private var briefings: [Briefing] {
+        engine.gameState.briefings
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -2248,12 +2648,6 @@ struct BriefingsView: View {
             Divider()
 
             if briefings.isEmpty {
-                // Generate some sample briefings
-                Color.clear
-                    .onAppear {
-                        generateSampleBriefings()
-                    }
-
                 VStack(spacing: 16) {
                     Image(systemName: "tray")
                         .font(.system(size: 48))
@@ -2272,9 +2666,7 @@ struct BriefingsView: View {
                         ForEach(briefings) { briefing in
                             BriefingCard(briefing: briefing) {
                                 selectedBriefing = briefing
-                                if let index = briefings.firstIndex(where: { $0.id == briefing.id }) {
-                                    briefings[index].isRead = true
-                                }
+                                engine.markBriefingAsRead(briefing.id)
                             }
                         }
                     }
@@ -2284,45 +2676,11 @@ struct BriefingsView: View {
         }
         .frame(width: 500, height: 450)
         .sheet(item: $selectedBriefing) { briefing in
-            BriefingDetailView(briefing: briefing) {
-                // Resolve briefing
-                if let index = briefings.firstIndex(where: { $0.id == briefing.id }) {
-                    briefings[index].isResolved = true
-                }
+            BriefingDetailView(briefing: briefing) { selectedIndex in
+                engine.resolveBriefing(briefing.id, selectedOption: selectedIndex)
                 selectedBriefing = nil
             }
         }
-    }
-
-    private func generateSampleBriefings() {
-        let sampleBriefings = [
-            Briefing(
-                type: .intelligence,
-                title: "Foreign Leader Interest",
-                summary: "Intelligence reports that a foreign leader has expressed interest in direct talks with you.",
-                urgency: 2,
-                turnReceived: engine.gameState.world.currentTurn,
-                responseOptions: ["Schedule call", "Send emissary", "Delay response"]
-            ),
-            Briefing(
-                type: .campaign,
-                title: "Fundraising Opportunity",
-                summary: "A major donor is hosting a fundraiser next week. Your team needs direction.",
-                urgency: 3,
-                turnReceived: engine.gameState.world.currentTurn,
-                deadline: engine.gameState.world.currentTurn + 2,
-                responseOptions: ["Attend personally", "Send surrogate", "Skip event"]
-            ),
-            Briefing(
-                type: .legislative,
-                title: "Congressional Push",
-                summary: "Your allies in Congress want to know if you'll campaign for them this cycle.",
-                urgency: 2,
-                turnReceived: engine.gameState.world.currentTurn,
-                responseOptions: ["Campaign actively", "Limited engagement", "Focus on own race"]
-            )
-        ]
-        briefings = sampleBriefings
     }
 }
 
@@ -2397,9 +2755,148 @@ struct BriefingCard: View {
     }
 }
 
+// MARK: - Save/Load View
+struct SaveLoadView: View {
+    @ObservedObject var engine: SimulationEngine
+    @Environment(\.dismiss) var dismiss
+    @State private var saves: [SaveMetadata] = []
+    @State private var showLoadError = false
+    @State private var loadErrorMessage = ""
+    @State private var saveName = ""
+    @State private var isSaving = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Save / Load Game")
+                    .font(.headline)
+                Spacer()
+                Button("Done") {
+                    dismiss()
+                }
+            }
+            .padding()
+            .background(Color(NSColor.windowBackgroundColor))
+
+            Divider()
+
+            TabView {
+                // Save Tab
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Save Current Game")
+                        .font(.headline)
+
+                    TextField("Save name (optional)", text: $saveName)
+                        .textFieldStyle(.roundedBorder)
+
+                    Button(action: saveGame) {
+                        HStack {
+                            Image(systemName: "square.and.arrow.down")
+                            Text(isSaving ? "Saving..." : "Save Game")
+                        }
+                    }
+                    .disabled(isSaving)
+
+                    Spacer()
+                }
+                .padding()
+                .tabItem { Label("Save", systemImage: "square.and.arrow.down") }
+
+                // Load Tab
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Load Saved Game")
+                        .font(.headline)
+
+                    if saves.isEmpty {
+                        VStack {
+                            Spacer()
+                            Text("No saved games found")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                        }
+                    } else {
+                        List(saves, id: \.filename) { save in
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text(save.displayName)
+                                        .fontWeight(.medium)
+                                    Text(save.formattedDate)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Button("Load") {
+                                    loadGame(save.filename)
+                                }
+                                Button(role: .destructive) {
+                                    deleteSave(save.filename)
+                                } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                }
+                .padding()
+                .tabItem { Label("Load", systemImage: "square.and.arrow.up") }
+            }
+            .padding()
+        }
+        .frame(width: 450, height: 400)
+        .onAppear {
+            refreshSaves()
+        }
+        .alert("Load Error", isPresented: $showLoadError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(loadErrorMessage)
+        }
+    }
+
+    private func saveGame() {
+        isSaving = true
+        let name = saveName.isEmpty ? nil : saveName
+        do {
+            try engine.saveGameAs(name ?? "autosave")
+            saveName = ""
+            refreshSaves()
+        } catch {
+            loadErrorMessage = "Failed to save: \(error.localizedDescription)"
+        }
+        isSaving = false
+    }
+
+    private func loadGame(_ filename: String) {
+        do {
+            try engine.loadGame(filename)
+            dismiss()
+        } catch {
+            loadErrorMessage = "Failed to load: \(error.localizedDescription)"
+            showLoadError = true
+        }
+    }
+
+    private func deleteSave(_ filename: String) {
+        do {
+            try engine.deleteSave(filename)
+            refreshSaves()
+        } catch {
+            loadErrorMessage = "Failed to delete: \(error.localizedDescription)"
+            showLoadError = true
+        }
+    }
+
+    private func refreshSaves() {
+        saves = engine.listSavedGames()
+    }
+}
+
 struct BriefingDetailView: View {
     let briefing: Briefing
-    let onRespond: () -> Void
+    let onRespond: (Int) -> Void
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
@@ -2447,21 +2944,78 @@ struct BriefingDetailView: View {
                 .frame(maxWidth: .infinity)
                 .background(Color.green.opacity(0.1))
                 .cornerRadius(8)
-            } else if !briefing.responseOptions.isEmpty {
+            } else if !briefing.options.isEmpty {
                 Divider()
 
-                Text("Response Options")
+                Text("Your Options")
                     .font(.headline)
 
-                ForEach(briefing.responseOptions, id: \.self) { option in
+                ForEach(Array(briefing.options.enumerated()), id: \.element.id) { index, option in
                     Button(action: {
-                        onRespond()
+                        onRespond(index)
                         dismiss()
                     }) {
-                        HStack {
-                            Image(systemName: "arrow.right.circle")
-                            Text(option)
-                            Spacer()
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Image(systemName: "arrow.right.circle.fill")
+                                    .foregroundColor(.accentColor)
+                                Text(option.label)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Spacer()
+                            }
+
+                            if !option.description.isEmpty {
+                                Text(option.description)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .padding(.leading, 22)
+                            }
+
+                            if !option.pros.isEmpty || !option.cons.isEmpty {
+                                HStack(alignment: .top, spacing: 12) {
+                                    if !option.pros.isEmpty {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            HStack(spacing: 2) {
+                                                Image(systemName: "plus.circle.fill")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.green)
+                                                Text("Pros")
+                                                    .font(.caption2)
+                                                    .fontWeight(.semibold)
+                                                    .foregroundColor(.green)
+                                            }
+                                            ForEach(option.pros, id: \.self) { pro in
+                                                Text("• \(pro)")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.secondary)
+                                                    .padding(.leading, 14)
+                                            }
+                                        }
+                                    }
+
+                                    if !option.cons.isEmpty {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            HStack(spacing: 2) {
+                                                Image(systemName: "minus.circle.fill")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.red)
+                                                Text("Cons")
+                                                    .font(.caption2)
+                                                    .fontWeight(.semibold)
+                                                    .foregroundColor(.red)
+                                            }
+                                            ForEach(option.cons, id: \.self) { con in
+                                                Text("• \(con)")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.secondary)
+                                                    .padding(.leading, 14)
+                                            }
+                                        }
+                                    }
+                                }
+                                .padding(.leading, 22)
+                            }
                         }
                         .padding(10)
                         .background(Color(NSColor.controlBackgroundColor))

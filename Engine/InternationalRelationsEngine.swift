@@ -45,6 +45,27 @@ struct Country: Codable, Identifiable {
         else if relationship >= -50 { return .adversarial }
         else { return .hostile }
     }
+
+    /// All countries available for diplomatic interactions in PresidentSim.
+    static let presidentSimCountries: [Country] = [
+        Country(name: "UK", leaderName: "Prime Minister", relationship: 80, isAlly: true, interests: ["NATO", "Trade", "Climate"]),
+        Country(name: "France", leaderName: "President", relationship: 75, isAlly: true, interests: ["EU", "Trade", "Middle East"]),
+        Country(name: "Germany", leaderName: "Chancellor", relationship: 72, isAlly: true, interests: ["EU", "Trade", "Energy"]),
+        Country(name: "Japan", leaderName: "Prime Minister", relationship: 78, isAlly: true, interests: ["Trade", "Security", "Technology"]),
+        Country(name: "Canada", leaderName: "Prime Minister", relationship: 85, isAlly: true, interests: ["Trade", "Energy", "Immigration"]),
+        Country(name: "Australia", leaderName: "Prime Minister", relationship: 82, isAlly: true, interests: ["Security", "Trade", "Climate"]),
+        Country(name: "China", leaderName: "President", relationship: 40, isNuclearPower: true, interests: ["Trade", "Taiwan", "Technology"]),
+        Country(name: "Russia", leaderName: "President", relationship: 35, isNuclearPower: true, interests: ["Ukraine", "Energy", "Security"]),
+        Country(name: "North Korea", leaderName: "Supreme Leader", relationship: 20, isNuclearPower: true, interests: ["Nuclear", "Security"]),
+        Country(name: "Iran", leaderName: "President", relationship: 30, isNuclearPower: true, interests: ["Nuclear", "Middle East", "Sanctions"]),
+        Country(name: "Mexico", leaderName: "President", relationship: 65, isAlly: false, interests: ["Trade", "Immigration", "Drugs"]),
+        Country(name: "Brazil", leaderName: "President", relationship: 68, isAlly: false, interests: ["Trade", "Climate", "Amazon"]),
+        Country(name: "India", leaderName: "Prime Minister", relationship: 70, isAlly: false, interests: ["Trade", "Security", "Climate"]),
+        Country(name: "South Korea", leaderName: "President", relationship: 80, isAlly: true, interests: ["Security", "Trade", "Technology"]),
+        Country(name: "Israel", leaderName: "Prime Minister", relationship: 75, isAlly: true, interests: ["Security", "Middle East", "Technology"]),
+        Country(name: "Saudi Arabia", leaderName: "Crown Prince", relationship: 55, isAlly: false, interests: ["Oil", "Security", "Human Rights"]),
+        Country(name: "Turkey", leaderName: "President", relationship: 50, isAlly: true, interests: ["NATO", "Trade", "Security"])
+    ]
 }
 
 enum RelationshipStatus: String {

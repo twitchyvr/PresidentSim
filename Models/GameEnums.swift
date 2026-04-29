@@ -114,6 +114,24 @@ enum DecisionOutcome: Codable {
         case .failure(let prob): return prob
         }
     }
+
+    /// Human-readable label for UI display — strips the associated probability value
+    var displayName: String {
+        switch self {
+        case .success: return "Success"
+        case .mixed: return "Mixed Result"
+        case .failure: return "Failure"
+        }
+    }
+
+    /// Past-tense verb phrase for narrative construction
+    var verbPhrase: String {
+        switch self {
+        case .success: return "succeeded"
+        case .mixed: return "had mixed results"
+        case .failure: return "failed"
+        }
+    }
 }
 
 // MARK: - News Cycle

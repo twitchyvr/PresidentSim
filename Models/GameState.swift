@@ -13,6 +13,7 @@ struct GameState: Codable {
     var pollingData: [String: Double] // state -> percentage
     var electoralVotes: Int
     var popularVoteMargin: Double
+    var opponentPolling: Double
 
     // Convention
     var conventionDelegates: [String: Int] // state -> delegate count
@@ -30,11 +31,19 @@ struct GameState: Codable {
     var billsVetoed: Int
     var executiveOrders: Int
     var cabinetSatisfaction: Double
+    var cabinet: [CabinetMember] = []
+
+    // Active debate
+    var activeDebate: Debate?
+
+    // International relations
+    var internationalIncidents: [InternationalIncident] = []
 
     // Pending decisions
     var pendingDecisions: [Decision]
     var activeEvents: [GameEvent]
     var recentDecisions: [DecisionResult]
+    var briefings: [Briefing] = []
 
     // Exit tracking
     var exitType: ExitType?
@@ -42,6 +51,9 @@ struct GameState: Codable {
 
     // Player resources
     var resources: PlayerResources = PlayerResources()
+
+    // Action cooldowns: action UUID -> remaining turns
+    var actionCooldowns: [UUID: Int] = [:]
 
     init(
         phase: GamePhase = .preCampaign,
@@ -58,6 +70,7 @@ struct GameState: Codable {
         self.pollingData = [:]
         self.electoralVotes = 0
         self.popularVoteMargin = 0.0
+        self.opponentPolling = 45.0
 
         self.conventionDelegates = [:]
         self.vpShortlist = []
@@ -94,7 +107,7 @@ struct GameState: Codable {
             case .transition:
                 handleTransition()
             case .presidency:
-                world.currentNarrative = "The inauguration is complete. Your presidency begins."
+                world.actionResultsThisTurn.append("The inauguration is complete. Your presidency begins.")
             default:
                 break
             }
@@ -120,7 +133,7 @@ struct GameState: Codable {
     }
 
     mutating func handleTransition() {
-        world.currentNarrative = "Congratulations, President-elect. The transition begins."
+        world.actionResultsThisTurn.append("Congratulations, President-elect. The transition begins.")
     }
 
     var isGameOver: Bool {
