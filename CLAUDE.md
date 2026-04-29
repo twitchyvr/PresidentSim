@@ -41,3 +41,10 @@
 ## Adding Dependencies
 - Any new external dependency must be approved by the user
 - Document why it's needed and how it handles errors
+
+## Performance Budgets
+- **Cold start**: App window visible within 2s of launch
+- **AI API calls**: 30s timeout (hard limit — no indefinite hangs)
+- **Test suite**: Must pass before any push (`xcodebuild test` exit 0)
+- **Memory**: No unbounded array growth — event/history arrays must have purge logic at defined limits
+- **Frame time**: 60fps on standard Mac hardware — no blocking main actor work > 16ms
