@@ -19,6 +19,14 @@ open PresidentSim.xcodeproj
 
 # 3. Build and run (Cmd+R in Xcode)
 xcodebuild -project PresidentSim.xcodeproj -scheme PresidentSim -configuration Debug build
+
+## Running Tests
+
+```bash
+xcodebuild -scheme PresidentSimTests -configuration Debug test
+```
+
+Tests cover: GameState/WorldState Codable round-trip, turnDescription edge cases (year boundaries), and core engine phase transitions.
 ```
 
 ## Requirements
