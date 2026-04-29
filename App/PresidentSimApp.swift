@@ -141,6 +141,7 @@ struct ContentView: View {
     @State private var showBriefings = false
     @State private var showSaveLoad = false
     @State private var showNewGame = false
+    @State private var showAPIKeySetup = false
     @State private var colorBlindMode: Bool {
         didSet { UserDefaults.standard.colorBlindMode = colorBlindMode }
     }
@@ -150,6 +151,7 @@ struct ContentView: View {
         _colorBlindMode = State(initialValue: UserDefaults.standard.bool(forKey: "PresidentSim.colorBlindMode"))
     }
 
+    @ViewBuilder
     var body: some View {
         VStack(spacing: 0) {
             // News ticker
@@ -273,6 +275,27 @@ struct ContentView: View {
                 Divider()
                     .frame(height: 20)
 
+                // AI brain status indicator — click opens API key setup if unconfigured
+                Button(action: {
+                    if engine.aiBrain == nil {
+                        showAPIKeySetup = true
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: engine.aiBrain != nil ? "brain.head.profile" : "brain")
+                        Text(engine.aiBrain != nil ? "AI Ready" : "AI Offline")
+                    }
+                    .foregroundColor(engine.aiBrain != nil ? .positive : .tossupAccent)
+                    .help(engine.aiBrain != nil
+                          ? "AI Brain connected. Consequence calculation and speech generation are fully powered."
+                          : "AI Brain not configured. Click to enter your MiniMax API key and enable AI-powered consequences and speech generation.")
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("toolbar.aiStatus")
+                .accessibilityLabel(engine.aiBrain != nil ? "AI Brain connected" : "AI Brain offline")
+                .accessibilityValue(engine.aiBrain != nil ? "Connected" : "Offline")
+                .accessibilityHint(engine.aiBrain != nil ? "AI is generating consequences and speeches" : "Opens setup to enter your MiniMax API key")
+
                 Text(engine.gameState.turnDescription)
                     .font(.headline)
                     .foregroundColor(.secondary)
@@ -321,9 +344,16 @@ struct ContentView: View {
         .onAppear {
             loadAPIKeyIfNeeded()
             updateNewsTicker()
+            if Double.random(in: 0...1) < 0.3 {
+                generatePeriodicBriefing()
+            }
         }
         .onChange(of: engine.gameState.world.actionResultsThisTurn.count) { _, _ in
             updateNewsTicker()
+        }
+        .sheet(isPresented: $showAPIKeySetup) {
+            APIKeySetupView(isPresented: $showAPIKeySetup)
+                .environmentObject(engine)
         }
     }
 
@@ -371,10 +401,6 @@ struct ContentView: View {
                 Button("Advance Turn") {
                     Task {
                         await engine.advanceTurn()
-                        // Possibly generate a briefing
-                        if Double.random(in: 0...1) < 0.3 {
-                            generatePeriodicBriefing()
-                        }
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -715,6 +741,12 @@ struct CandidateStatBar: View {
         case "Charisma": return "Charisma: Ability to connect with voters and inspire crowds. High charisma helps in speeches, debates, and campaign rallies."
         case "Intelligence": return "Intelligence: Mental acuity and policy understanding. Affects negotiation outcomes and crisis decision quality."
         case "Willpower": return "Willpower: Determination and resilience under pressure. Helps resist scandals, survive crises, and push through opposition."
+        case "Congress": return "Congressional Support: Percentage of Congress that backs your agenda. Below 50% makes legislation difficult. Affected by approval, party unity, and specific actions."
+        case "Party Unity": return "Party Unity: Loyalty of your party's legislators to your agenda. High unity lets you pass priorities; low unity invites primary challenges."
+        case "Donors": return "Donor Satisfaction: How happy major campaign donors are with you. Low donor satisfaction reduces fundraising capacity and access toelite networks."
+        case "Media": return "Media Favorability: How positively the press covers you. Affects narrative control, public persuasion, and response to crises."
+        case "Global Influence": return "Global Influence: Your administration's standing in world affairs. High influence improves diplomatic leverage and alliance cohesion."
+        case "Prestige": return "International Prestige: Respect for America and your presidency abroad. Influences diplomacy, trade negotiations, and crisis posturing."
         default: return label
         }
     }
@@ -1061,21 +1093,34 @@ struct EventSidebar: View {
                     GroupBox("Recent History") {
                         VStack(alignment: .leading, spacing: 4) {
                             ForEach(engine.gameState.recentDecisions.prefix(5)) { result in
-                                HStack(alignment: .top, spacing: 6) {
-                                    Image(systemName: outcomeIcon(for: result.outcome))
-                                        .font(.caption2)
-                                        .foregroundColor(outcomeColor(for: result.outcome))
-
-                                    VStack(alignment: .leading, spacing: 0) {
-                                        Text(result.decision.prompt)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack(alignment: .top, spacing: 6) {
+                                        Image(systemName: outcomeIcon(for: result.outcome))
                                             .font(.caption2)
-                                            .foregroundColor(.primary)
-                                            .lineLimit(1)
+                                            .foregroundColor(outcomeColor(for: result.outcome))
 
-                                        Text(result.narrative)
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                            .lineLimit(2)
+                                        VStack(alignment: .leading, spacing: 0) {
+                                            Text(result.decision.prompt)
+                                                .font(.caption2)
+                                                .foregroundColor(.primary)
+                                                .lineLimit(1)
+
+                                            Text(result.narrative)
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                                .lineLimit(2)
+                                        }
+                                    }
+
+                                    // Render computed consequences — closes the action-to-outcome feedback loop
+                                    // GDD Section 12.1 Priority 2
+                                    if !result.consequences.isEmpty {
+                                        VStack(alignment: .leading, spacing: 1) {
+                                            ForEach(result.consequences, id: \.affectedArea) { consequence in
+                                                ConsequenceRow(consequence: consequence)
+                                            }
+                                        }
+                                        .padding(.leading, 22)
                                     }
                                 }
                             }
@@ -2133,6 +2178,47 @@ struct EconomicIndicator: View {
     }
 }
 
+/// Displays a single computed consequence from a DecisionResult.
+/// Shows affected domain, numeric delta, and narrative — closing the feedback loop
+/// between player action and systemic outcome. GDD Section 12.1 Priority 2.
+struct ConsequenceRow: View {
+    let consequence: EventConsequence
+
+    private var deltaColor: Color {
+        if consequence.delta > 0 { return .positive }
+        if consequence.delta < 0 { return .danger }
+        return .tossupAccent
+    }
+
+    private var deltaSign: String {
+        if consequence.delta > 0 { return "+\(String(format: "%.1f", consequence.delta))" }
+        if consequence.delta < 0 { return String(format: "%.1f", consequence.delta) }
+        return "0"
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 6) {
+            Text(humanReadableKey(consequence.affectedArea))
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .frame(minWidth: 70, alignment: .leading)
+
+            Text(deltaSign)
+                .font(.caption2)
+                .fontWeight(.medium)
+                .foregroundColor(deltaColor)
+                .frame(minWidth: 30, alignment: .trailing)
+
+            Text(consequence.narrative)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .lineLimit(2)
+        }
+        .padding(.vertical, 2)
+        .accessibilityLabel("\(humanReadableKey(consequence.affectedArea)): \(deltaSign). \(consequence.narrative)")
+    }
+}
+
 // MARK: - News Ticker
 
 struct NewsTickerView: View {
@@ -2397,6 +2483,145 @@ struct NewGameView: View {
     }
 }
 
+// MARK: - API Key Setup View
+
+/// Allows the player to enter their MiniMax API key, which is saved to
+/// ~/.PresidentSim/env and used to power AI-driven consequence calculation and
+/// speech generation. Shown automatically when the AI brain is unconfigured.
+struct APIKeySetupView: View {
+    @Binding var isPresented: Bool
+    @EnvironmentObject var engine: SimulationEngine
+
+    @State private var apiKeyInput = ""
+    @State private var saveError: String?
+    @State private var isSaving = false
+
+    var body: some View {
+        VStack(spacing: 20) {
+            // Header
+            HStack {
+                Image(systemName: "brain")
+                    .font(.title2)
+                    .foregroundColor(.playerAccent)
+                Text("Connect AI Brain")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                Spacer()
+                Button(action: { isPresented = false }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("apiKeySetup.close")
+                .accessibilityLabel("Close")
+                .keyboardShortcut(.escape)
+            }
+
+            Divider()
+
+            // Instructions
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Enter your MiniMax API key to enable AI-powered features:")
+                    .font(.subheadline)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Realistic consequence calculation for decisions", systemImage: "arrow.triangle.branch")
+                    Label("AI-assisted speech and rhetoric generation", systemImage: "text.bubble")
+                    Label("Dynamic event interpretation and narrative", systemImage: "waveform.path.ecg")
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+                Text("Get your API key at console.minimax.io (free tier available). Your key is stored locally and never sent anywhere except the MiniMax API.")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+
+            // Key entry
+            VStack(alignment: .leading, spacing: 4) {
+                Text("MiniMax API Key")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                SecureField("Enter API key...", text: $apiKeyInput)
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("apiKeySetup.keyInput")
+                    .accessibilityLabel("MiniMax API key")
+                    .accessibilityHint("Paste your API key from console.minimax.io")
+            }
+
+            if let error = saveError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundColor(.danger)
+            }
+
+            Spacer()
+
+            // Actions
+            HStack {
+                Button("Continue Without AI") {
+                    isPresented = false
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("apiKeySetup.skip")
+                .accessibilityLabel("Continue without AI")
+                .accessibilityHint("Closes this dialog and uses rules-based fallback mode")
+
+                Spacer()
+
+                Button(action: saveAndConnect) {
+                    if isSaving {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Text("Save & Connect")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(apiKeyInput.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
+                .accessibilityIdentifier("apiKeySetup.save")
+                .accessibilityLabel("Save and connect AI brain")
+                .accessibilityHint("Saves your API key to ~/.PresidentSim/env and connects the AI brain")
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(24)
+        .frame(width: 480, height: 360)
+    }
+
+    private func saveAndConnect() {
+        let key = apiKeyInput.trimmingCharacters(in: .whitespaces)
+        guard !key.isEmpty else { return }
+
+        isSaving = true
+        saveError = nil
+
+        // Write key to ~/.PresidentSim/env
+        let envPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".PresidentSim/env")
+        let envContent = "MINIMAX_API_KEY=\(key)\n"
+
+        do {
+            try FileManager.default.createDirectory(
+                at: envPath.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try envContent.write(toFile: envPath.path, atomically: true, encoding: .utf8)
+
+            // Initialize the AI brain with the provided key
+            engine.initializeAI(apiKey: key)
+
+            isPresented = false
+        } catch {
+            saveError = "Failed to save API key: \(error.localizedDescription)"
+        }
+
+        isSaving = false
+    }
+}
+
 // MARK: - Command Center View
 
 struct CommandCenterView: View {
@@ -2555,7 +2780,7 @@ struct CommandCenterView: View {
 
     private func generateAISpeech() {
         guard let aiBrain = engine.aiBrain else {
-            speechText = "AI brain not available. Please enter your speech manually."
+            speechText = "AI brain not configured. Click the brain icon in the toolbar to enter your MiniMax API key, or write your speech manually below."
             return
         }
 
