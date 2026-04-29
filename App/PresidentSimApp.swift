@@ -58,6 +58,10 @@ extension Color {
     static let tabDefault = Color.blue
     /// Tip/idea accent (lightbulb icons)
     static let tipAccent = Color.yellow
+    /// Positive/good indicator (approval up, gains, success)
+    static let positive = Color.green
+    /// Special/campaign indicator (AI tag, funds)
+    static let special = Color.purple
 }
 
 @main
@@ -402,9 +406,9 @@ struct PlayerInfoSidebar: View {
                         Divider()
 
                         // Candidate stats with visual bars
-                        CandidateStatBar(label: "Charisma", value: engine.gameState.player.charisma, max: 10, color: .orange)
-                        CandidateStatBar(label: "Intelligence", value: engine.gameState.player.intelligence, max: 10, color: .blue)
-                        CandidateStatBar(label: "Willpower", value: engine.gameState.player.willpower, max: 10, color: .purple)
+                        CandidateStatBar(label: "Charisma", value: engine.gameState.player.charisma, max: 10, color: .tossupAccent)
+                        CandidateStatBar(label: "Intelligence", value: engine.gameState.player.intelligence, max: 10, color: .playerAccent)
+                        CandidateStatBar(label: "Willpower", value: engine.gameState.player.willpower, max: 10, color: .special)
                     }
                 }
 
@@ -422,7 +426,7 @@ struct PlayerInfoSidebar: View {
                         Divider()
 
                         VStack(spacing: 6) {
-                            StatRow(label: "Congressional Support", value: engine.gameState.world.congressionalSupport, max: 100, color: .blue)
+                            StatRow(label: "Congressional Support", value: engine.gameState.world.congressionalSupport, max: 100, color: .playerAccent)
                             StatRow(label: "Party Unity", value: engine.gameState.world.partyUnityScore, max: 100, color: partyColor)
                         }
                     }
@@ -505,7 +509,7 @@ struct PlayerInfoSidebar: View {
                                     }
 
                                     ProgressView(value: Double(engine.gameState.electoralVotes), total: 270)
-                                        .tint(engine.gameState.electoralVotes >= 270 ? .green : .orange)
+                                        .tint(engine.gameState.electoralVotes >= 270 ? .positive : .tossupAccent)
 
                                     Text("\(engine.gameState.electoralVotes >= 270 ? "Winner!" : "\(270 - engine.gameState.electoralVotes) needed to win")")
                                         .font(.caption2)
@@ -540,9 +544,9 @@ struct PlayerInfoSidebar: View {
 
     var partyColor: Color {
         switch engine.gameState.player.party {
-        case .democrat: return .blue
-        case .republican: return .red
-        case .independent: return .purple
+        case .democrat: return .playerAccent
+        case .republican: return .opponentAccent
+        case .independent: return .special
         }
     }
 
@@ -727,7 +731,7 @@ struct ApprovalTrendView: View {
                             Text("\(Int(abs(change))) pts")
                                 .font(.caption2)
                         }
-                        .foregroundColor(change >= 0 ? .green : .red)
+                        .foregroundColor(change >= 0 ? .positive : .danger)
                     }
                 }
             } else {
@@ -1011,7 +1015,7 @@ struct SituationFeedItem: View {
                         ForEach(Array(entry.effects.prefix(4)), id: \.key) { effect in
                             Text("\(humanReadableKey(effect.key)): \(effect.value >= 0 ? "+" : "")\(Int(effect.value))")
                                 .font(.caption2)
-                                .foregroundColor(effect.value >= 0 ? .green : .red)
+                                .foregroundColor(effect.value >= 0 ? .positive : .danger)
                                 .padding(.horizontal, 4)
                                 .padding(.vertical, 1)
                                 .background(Color.gray.opacity(0.1))
@@ -1025,8 +1029,8 @@ struct SituationFeedItem: View {
 
     var phaseColor: Color {
         switch entry.phase {
-        case .preCampaign, .campaign: return .blue
-        case .primaries: return .purple
+        case .preCampaign, .campaign: return .playerAccent
+        case .primaries: return .special
         case .convention: return .orange
         case .generalElection: return .red
         case .transition: return .cyan
@@ -1073,6 +1077,7 @@ struct DecisionCard: View {
                     .cornerRadius(4)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("decision.\(decision.id.uuidString.prefix(8)).option.\(index)")
             }
 
             if showConfirmation, let idx = pendingIndex {
@@ -1092,12 +1097,14 @@ struct DecisionCard: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
+                        .accessibilityIdentifier("decision.\(decision.id.uuidString.prefix(8)).confirm")
 
                         Button("Cancel", role: .cancel) {
                             showConfirmation = false
                             pendingIndex = nil
                         }
                         .controlSize(.small)
+                        .accessibilityIdentifier("decision.\(decision.id.uuidString.prefix(8)).cancel")
                     }
                 }
                 .padding(8)
@@ -1108,6 +1115,7 @@ struct DecisionCard: View {
         .padding(8)
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(8)
+        .accessibilityIdentifier("decision.\(decision.id.uuidString.prefix(8))")
     }
 }
 
@@ -1134,14 +1142,14 @@ struct EventCard: View {
                         if event.isResolved {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.caption2)
-                                .foregroundColor(.green)
+                                .foregroundColor(.positive)
                         } else if event.isAIGenerated {
                             Text("AI")
                                 .font(.system(size: 8, weight: .bold))
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 4)
                                 .padding(.vertical, 1)
-                                .background(Color.purple)
+                                .background(Color.special)
                                 .cornerRadius(3)
                         }
                     }
@@ -1166,7 +1174,7 @@ struct EventCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(event.isResolved ? Color.green.opacity(0.08) : Color(NSColor.controlBackgroundColor))
+                .fill(event.isResolved ? Color.positive.opacity(0.08) : Color(NSColor.controlBackgroundColor))
                 .overlay(
                     RoundedRectangle(cornerRadius: 6)
                         .stroke(categoryColor.opacity(0.3), lineWidth: 1)
@@ -1181,13 +1189,13 @@ struct EventCard: View {
 
     var categoryColor: Color {
         switch event.category {
-        case .economic: return .green
-        case .political: return .blue
-        case .international: return .purple
-        case .social: return .orange
-        case .crisis: return .red
-        case .scandal: return .pink
-        case .achievement: return .yellow
+        case .economic: return .positive
+        case .political: return .playerAccent
+        case .international: return .special
+        case .social: return .tossupAccent
+        case .crisis: return .danger
+        case .scandal: return .danger
+        case .achievement: return .tipAccent
         case .personal: return .gray
         }
     }
@@ -1296,7 +1304,7 @@ struct CampaignView: View {
                                 .fontWeight(.medium)
                             if opponent.momentum > 0 {
                                 Image(systemName: "arrow.up")
-                                    .foregroundColor(.green)
+                                    .foregroundColor(.positive)
                                     .font(.caption)
                             } else if opponent.momentum < 0 {
                                 Image(systemName: "arrow.down")
@@ -1874,13 +1882,13 @@ struct EconomicIndicator: View {
                 Text(String(format: format, value))
                     .font(.subheadline)
                     .fontWeight(.medium)
-                    .foregroundColor(isGood ? .primary : .red)
+                    .foregroundColor(isGood ? .primary : .danger)
 
                 if trend != 0 {
                     let goodTrend: Bool = isPositiveGood ? trend > 0 : trend < 0
                     Image(systemName: trend > 0 ? "arrow.up.right" : "arrow.down.right")
                         .font(.caption2)
-                        .foregroundColor(goodTrend ? .green : .red)
+                        .foregroundColor(goodTrend ? .positive : .danger)
                 }
             }
         }
@@ -1968,7 +1976,7 @@ struct EventDetailView: View {
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
-                                .background(Color.purple)
+                                .background(Color.special)
                                 .cornerRadius(4)
                         }
                     }
@@ -2005,7 +2013,7 @@ struct EventDetailView: View {
                     Text("RESOLVED")
                         .font(.caption)
                         .fontWeight(.bold)
-                        .foregroundColor(.green)
+                        .foregroundColor(.positive)
 
                     Text(event.resolution ?? "")
                         .font(.caption)
@@ -2013,7 +2021,7 @@ struct EventDetailView: View {
                 }
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.green.opacity(0.1))
+                .background(Color.positive.opacity(0.1))
                 .cornerRadius(8)
             }
 
@@ -2025,7 +2033,7 @@ struct EventDetailView: View {
                     ForEach(event.consequences, id: \.affectedArea) { consequence in
                         HStack {
                             Image(systemName: consequence.delta >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
-                                .foregroundColor(consequence.delta >= 0 ? .green : .red)
+                                .foregroundColor(consequence.delta >= 0 ? .positive : .danger)
 
                             Text(consequence.affectedArea)
                                 .font(.subheadline)
@@ -2035,7 +2043,7 @@ struct EventDetailView: View {
                             Text(consequence.delta >= 0 ? "+\(String(format: "%.1f", consequence.delta))" : "\(String(format: "%.1f", consequence.delta))")
                                 .font(.subheadline)
                                 .fontWeight(.medium)
-                                .foregroundColor(consequence.delta >= 0 ? .green : .red)
+                                .foregroundColor(consequence.delta >= 0 ? .positive : .danger)
                         }
 
                         Text(consequence.narrative)
@@ -2185,16 +2193,16 @@ struct CommandCenterView: View {
 
             // Resources bar
             HStack(spacing: 20) {
-                ResourcePill(icon: "banknote", label: "Political Capital", value: "\(Int(engine.gameState.resources.politicalCapital))", color: .blue)
-                ResourcePill(icon: "dollarsign.circle", label: "Campaign Funds", value: "$\(formatMoney(Double(engine.gameState.resources.campaignFunds)))", color: .green)
-                ResourcePill(icon: "tv", label: "Media Cycles", value: "\(engine.gameState.resources.mediaCycles)", color: .purple)
+                ResourcePill(icon: "banknote", label: "Political Capital", value: "\(Int(engine.gameState.resources.politicalCapital))", color: .playerAccent)
+                ResourcePill(icon: "dollarsign.circle", label: "Campaign Funds", value: "$\(formatMoney(Double(engine.gameState.resources.campaignFunds)))", color: .positive)
+                ResourcePill(icon: "tv", label: "Media Cycles", value: "\(engine.gameState.resources.mediaCycles)", color: .special)
 
                 Spacer()
 
                 // Momentum
                 HStack(spacing: 4) {
                     Image(systemName: engine.gameState.campaignMomentum >= 0 ? "arrow.up.right.circle.fill" : "arrow.down.right.circle.fill")
-                        .foregroundColor(engine.gameState.campaignMomentum >= 0 ? .green : .red)
+                        .foregroundColor(engine.gameState.campaignMomentum >= 0 ? .positive : .danger)
                     Text("Momentum: \(String(format: "%.1f", engine.gameState.campaignMomentum))")
                         .font(.caption)
                 }
@@ -2642,6 +2650,7 @@ struct ActionCard: View {
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(8)
         .opacity(isDisabled ? 0.6 : 1.0)
+        .accessibilityIdentifier("action.\(action.name.replacingOccurrences(of: " ", with: "_").lowercased())")
     }
 
     private func costIcon(_ type: ActionCostType) -> String {
@@ -2982,14 +2991,14 @@ struct BriefingDetailView: View {
             if briefing.isResolved {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
+                        .foregroundColor(.positive)
                     Text("Resolved")
                         .font(.caption)
-                        .foregroundColor(.green)
+                        .foregroundColor(.positive)
                 }
                 .padding()
                 .frame(maxWidth: .infinity)
-                .background(Color.green.opacity(0.1))
+                .background(Color.positive.opacity(0.1))
                 .cornerRadius(8)
             } else if !briefing.options.isEmpty {
                 Divider()
@@ -3026,11 +3035,11 @@ struct BriefingDetailView: View {
                                             HStack(spacing: 2) {
                                                 Image(systemName: "plus.circle.fill")
                                                     .font(.caption2)
-                                                    .foregroundColor(.green)
+                                                    .foregroundColor(.positive)
                                                 Text("Pros")
                                                     .font(.caption2)
                                                     .fontWeight(.semibold)
-                                                    .foregroundColor(.green)
+                                                    .foregroundColor(.positive)
                                             }
                                             ForEach(option.pros, id: \.self) { pro in
                                                 Text("• \(pro)")
