@@ -1975,6 +1975,16 @@ struct CommandCenterView: View {
     @Environment(\.dismiss) var dismiss
     @State private var selectedCategory: ActionCategory?
 
+    // Speech editing state
+    @State private var isEditingSpeech = false
+    @State private var speechText = ""
+    @State private var isGeneratingSpeech = false
+    @State private var selectedSpeechType = "campaign"
+    @State private var selectedTone = "soaring"
+
+    private let speechTypes = ["campaign", "inaugural", "state_of_union", "crisis", "press_conference"]
+    private let speechTones = ["soaring", "solemn", "urgent", "reassuring"]
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -2047,6 +2057,29 @@ struct CommandCenterView: View {
             }
         }
         .frame(width: 600, height: 500)
+        .sheet(isPresented: $isEditingSpeech) {
+            SpeechEditorSheet(
+                speechText: $speechText,
+                selectedSpeechType: $selectedSpeechType,
+                selectedTone: $selectedTone,
+                speechTypes: speechTypes,
+                speechTones: speechTones,
+                isGenerating: isGeneratingSpeech,
+                onDeliver: {
+                    // Costs and effects already applied when action was selected
+                    SpeechService.shared.speakDraftSpeech(speechText)
+                    engine.gameState.world.currentNarrative = "You delivered a \(selectedSpeechType.replacingOccurrences(of: "_", with: " ")) speech."
+                    isEditingSpeech = false
+                },
+                onGenerate: {
+                    generateAISpeech()
+                },
+                onCancel: {
+                    // Costs already deducted when action was selected — no refund
+                    isEditingSpeech = false
+                }
+            )
+        }
     }
 
     private var filteredActions: [GameAction] {
@@ -2129,13 +2162,48 @@ struct CommandCenterView: View {
         // Show brief feedback
         engine.gameState.world.currentNarrative = "You used: \(action.name)"
 
-        // Speak the speech if it's a speech action
+        // For "Make Speech", open the speech editor sheet instead of immediate delivery
         if action.name == "Make Speech" {
-            let speechText = "My fellow Americans, we stand at a pivotal moment in our nation's history. Together, we will build a stronger economy, unite our people, and secure a brighter future for generations to come. This is not about Democrat or Republican — this is about the American people, and we will rise together."
-            SpeechService.shared.speakDraftSpeech(speechText)
+            // Costs already deducted above; just set up the editor
+            speechText = "My fellow Americans, we stand at a pivotal moment in our nation's history. Together, we will build a stronger economy, unite our people, and secure a brighter future for generations to come."
+            isEditingSpeech = true
+            return
         }
 
         // Sheet stays open — user can perform multiple actions or click "Done"
+    }
+
+    private func generateAISpeech() {
+        guard let aiBrain = engine.aiBrain else {
+            speechText = "AI brain not available. Please enter your speech manually."
+            return
+        }
+
+        isGeneratingSpeech = true
+        speechText = ""
+
+        let gameSummary = engine.gameState.toAISummary()
+        let input = MiniMaxService.SpeechInput(
+            speechType: selectedSpeechType,
+            gameState: gameSummary,
+            topic: engine.gameState.world.trendingTopic.isEmpty ? "the state of the nation" : engine.gameState.world.trendingTopic,
+            tone: selectedTone
+        )
+
+        Task {
+            do {
+                let output = try await aiBrain.generateSpeech(input: input)
+                await MainActor.run {
+                    self.speechText = output.draftSpeech
+                    self.isGeneratingSpeech = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.speechText = "Failed to generate speech: \(error.localizedDescription)\n\nPlease enter your speech manually."
+                    self.isGeneratingSpeech = false
+                }
+            }
+        }
     }
 
     private func formatMoney(_ amount: Double) -> String {
@@ -2206,6 +2274,133 @@ struct CategoryTab: View {
         case .political: return "person.3.fill"
         case .personnel: return "person.badge.key.fill"
         }
+    }
+}
+
+// MARK: - Speech Editor Sheet
+
+struct SpeechEditorSheet: View {
+    @Binding var speechText: String
+    @Binding var selectedSpeechType: String
+    @Binding var selectedTone: String
+    let speechTypes: [String]
+    let speechTones: [String]
+    let isGenerating: Bool
+    let onDeliver: () -> Void
+    let onGenerate: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Compose Speech")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                Spacer()
+                Button("Cancel") {
+                    onCancel()
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding()
+            .background(Color(NSColor.controlBackgroundColor))
+
+            Divider()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Speech type and tone pickers
+                    HStack(spacing: 20) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Speech Type")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Picker("", selection: $selectedSpeechType) {
+                                ForEach(speechTypes, id: \.self) { type in
+                                    Text(type.replacingOccurrences(of: "_", with: " ").capitalized).tag(type)
+                                }
+                            }
+                            .labelsHidden()
+                            .frame(width: 180)
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Tone")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Picker("", selection: $selectedTone) {
+                                ForEach(speechTones, id: \.self) { tone in
+                                    Text(tone.capitalized).tag(tone)
+                                }
+                            }
+                            .labelsHidden()
+                            .frame(width: 140)
+                        }
+
+                        Button(action: onGenerate) {
+                            HStack {
+                                if isGenerating {
+                                    ProgressView()
+                                        .scaleEffect(0.6)
+                                        .fixedSize()
+                                } else {
+                                    Image(systemName: "wand.and.stars")
+                                }
+                                Text(isGenerating ? "Generating..." : "AI Generate")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isGenerating)
+
+                        Spacer()
+                    }
+
+                    // Speech text editor
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Speech Text")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        if isGenerating && speechText.isEmpty {
+                            HStack {
+                                ProgressView()
+                                Text("Generating your speech with AI...")
+                                    .foregroundColor(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 8)
+                        } else {
+                            TextEditor(text: $speechText)
+                                .font(.body)
+                                .frame(minHeight: 200)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(Color(NSColor.separatorColor), lineWidth: 1)
+                                )
+                        }
+                    }
+                }
+                .padding()
+            }
+
+            Divider()
+
+            // Action buttons
+            HStack {
+                Text("\(speechText.split(separator: " ").count) words")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button("Deliver Speech") {
+                    onDeliver()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(speechText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            .padding()
+        }
+        .frame(width: 580, height: 480)
     }
 }
 
