@@ -24,8 +24,12 @@ struct WorldState: Codable {
 
     // News & Narrative
     var newsCyclePhase: NewsCyclePhase
-    var currentNarrative: String
+    var actionResultsThisTurn: [String]
     var trendingTopic: String
+
+    var currentNarrative: String {
+        actionResultsThisTurn.last ?? "Your journey awaits..."
+    }
 
     // Time
     var currentTurn: Int // 1 turn = 1 week
@@ -59,7 +63,7 @@ struct WorldState: Codable {
         self.internationalPrestige = 60.0
 
         self.newsCyclePhase = .rising
-        self.currentNarrative = "A new chapter in American politics begins."
+        self.actionResultsThisTurn = []
         self.trendingTopic = "Election 2028"
 
         self.currentTurn = 1

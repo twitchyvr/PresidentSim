@@ -296,19 +296,22 @@ struct BriefingOption: Codable, Identifiable {
     let description: String
     let pros: [String]
     let cons: [String]
+    let effects: [String: Double] // stat -> delta
 
     init(
         id: UUID = UUID(),
         label: String,
         description: String = "",
         pros: [String] = [],
-        cons: [String] = []
+        cons: [String] = [],
+        effects: [String: Double] = [:]
     ) {
         self.id = id
         self.label = label
         self.description = description
         self.pros = pros
         self.cons = cons
+        self.effects = effects
     }
 }
 
@@ -322,6 +325,7 @@ struct Briefing: Codable, Identifiable {
     let deadline: Int? // turn by which to respond
     var isRead: Bool
     var isResolved: Bool
+    var selectedOptionIndex: Int? // which option the player chose
     let options: [BriefingOption]
     var requiresResponse: Bool { deadline != nil && !isResolved }
 
@@ -335,6 +339,7 @@ struct Briefing: Codable, Identifiable {
         deadline: Int? = nil,
         isRead: Bool = false,
         isResolved: Bool = false,
+        selectedOptionIndex: Int? = nil,
         options: [BriefingOption] = []
     ) {
         self.id = id
@@ -346,6 +351,7 @@ struct Briefing: Codable, Identifiable {
         self.deadline = deadline
         self.isRead = isRead
         self.isResolved = isResolved
+        self.selectedOptionIndex = selectedOptionIndex
         self.options = options
     }
 }

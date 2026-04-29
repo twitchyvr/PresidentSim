@@ -31,11 +31,19 @@ struct GameState: Codable {
     var billsVetoed: Int
     var executiveOrders: Int
     var cabinetSatisfaction: Double
+    var cabinet: [CabinetMember] = []
+
+    // Active debate
+    var activeDebate: Debate?
+
+    // International relations
+    var internationalIncidents: [InternationalIncident] = []
 
     // Pending decisions
     var pendingDecisions: [Decision]
     var activeEvents: [GameEvent]
     var recentDecisions: [DecisionResult]
+    var briefings: [Briefing] = []
 
     // Exit tracking
     var exitType: ExitType?
@@ -99,7 +107,7 @@ struct GameState: Codable {
             case .transition:
                 handleTransition()
             case .presidency:
-                world.currentNarrative = "The inauguration is complete. Your presidency begins."
+                world.actionResultsThisTurn.append("The inauguration is complete. Your presidency begins.")
             default:
                 break
             }
@@ -125,7 +133,7 @@ struct GameState: Codable {
     }
 
     mutating func handleTransition() {
-        world.currentNarrative = "Congratulations, President-elect. The transition begins."
+        world.actionResultsThisTurn.append("Congratulations, President-elect. The transition begins.")
     }
 
     var isGameOver: Bool {

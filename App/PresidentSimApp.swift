@@ -13,6 +13,30 @@ private func formatCompactCurrency(_ amount: Double) -> String {
     return String(format: "%.0f", amount)
 }
 
+/// Maps camelCase internal effect keys to human-readable labels for UI display
+private func humanReadableKey(_ key: String) -> String {
+    switch key {
+    case "approvalRating": return "Approval"
+    case "congressionalSupport": return "Congress"
+    case "partyUnityScore": return "Party Unity"
+    case "momentum": return "Momentum"
+    case "mediaFavorability": return "Media"
+    case "campaignFunds": return "Funds"
+    case "statePolling": return "State Poll"
+    case "opponentPolling": return "Opponent Poll"
+    case "globalInfluence": return "Global Influence"
+    case "relationshipTarget": return "Diplomatic Relations"
+    case "cabinetSatisfaction": return "Cabinet"
+    case "donorSatisfaction": return "Donors"
+    case "gdpGrowth": return "GDP"
+    case "inflation": return "Inflation"
+    case "unemployment": return "Jobs"
+    case "internationalPrestige": return "Prestige"
+    case "politicalCapital": return "Pol. Capital"
+    default: return key.replacingOccurrences(of: "([a-z])([A-Z])", with: "$1 $2", options: .regularExpression).capitalized
+    }
+}
+
 @main
 struct PresidentSimApp: App {
     @StateObject private var engine = SimulationEngine()
@@ -40,7 +64,6 @@ struct ContentView: View {
     @State private var showCommandCenter = false
     @State private var showBriefings = false
     @State private var showSaveLoad = false
-    @State private var briefings: [Briefing] = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -148,7 +171,7 @@ struct ContentView: View {
                 .environmentObject(engine)
         }
         .sheet(isPresented: $showBriefings) {
-            BriefingsView(briefings: $briefings)
+            BriefingsView()
                 .environmentObject(engine)
         }
         .sheet(isPresented: $showSaveLoad) {
@@ -214,12 +237,12 @@ struct ContentView: View {
     }
 
     private func updateNewsTicker() {
-        let narrative = engine.gameState.world.currentNarrative
+        let actionResults = engine.gameState.world.actionResultsThisTurn
         let recentEvents = engine.gameState.activeEvents.prefix(2)
         var tickerParts: [String] = []
 
-        if !narrative.isEmpty && narrative != "Your journey awaits..." {
-            tickerParts.append(narrative)
+        if !actionResults.isEmpty {
+            tickerParts.append(contentsOf: actionResults)
         }
 
         for event in recentEvents {
@@ -297,16 +320,12 @@ struct ContentView: View {
                 deadline: engine.gameState.world.currentTurn + Int.random(in: 2...5),
                 options: template.2
             )
-            briefings.insert(newBriefing, at: 0)
-            // Keep max 20 briefings
-            if briefings.count > 20 {
-                briefings.removeLast()
-            }
+            engine.insertBriefing(newBriefing)
         }
     }
 
     private var unreadBriefingsCount: Int {
-        briefings.filter { !$0.isRead }.count
+        engine.unreadBriefingsCount
     }
 }
 
@@ -416,7 +435,7 @@ struct PlayerInfoSidebar: View {
                                 Text("Momentum")
                                     .font(.caption)
                                 Spacer()
-                                MomentumIndicator(momentum: engine.gameState.campaignMomentum)
+                                MomentumIndicator(momentum: engine.gameState.resources.momentum)
                             }
 
                             Divider()
@@ -518,6 +537,7 @@ struct CandidateStatBar: View {
                 Text(label)
                     .font(.caption2)
                     .foregroundColor(.secondary)
+                    .help(statTooltip)
                 Spacer()
                 Text(String(format: "%.0f", value))
                     .font(.caption2)
@@ -537,6 +557,15 @@ struct CandidateStatBar: View {
                 }
             }
             .frame(height: 4)
+        }
+    }
+
+    private var statTooltip: String {
+        switch label {
+        case "Charisma": return "Charisma: Ability to connect with voters and inspire crowds. High charisma helps in speeches, debates, and campaign rallies."
+        case "Intelligence": return "Intelligence: Mental acuity and policy understanding. Affects negotiation outcomes and crisis decision quality."
+        case "Willpower": return "Willpower: Determination and resilience under pressure. Helps resist scandals, survive crises, and push through opposition."
+        default: return label
         }
     }
 }
@@ -571,6 +600,7 @@ struct ApprovalGaugeView: View {
                 }
             }
             .frame(width: 80, height: 80)
+            .help("Approval Rating: Percentage of Americans who approve of your performance. Above 60% is strong; below 40% is weak. Affects electoral prospects, congressional leverage, and media coverage.")
 
             Text(approvalDescription)
                 .font(.caption2)
@@ -603,6 +633,7 @@ struct MomentumIndicator: View {
         .padding(.vertical, 2)
         .background(momentumColor.opacity(0.1))
         .cornerRadius(4)
+        .help("Campaign Momentum: Positive values mean your campaign is gaining energy and poll movement. Negative values mean you are losing ground. Above 2 or below -2 indicates significant shifts.")
     }
 
     var momentumIcon: String {
@@ -692,6 +723,7 @@ struct PoliticalCapitalGauge: View {
                 Text("Political Capital")
                     .font(.caption2)
                     .foregroundColor(.secondary)
+                    .help("Political Capital: The currency of governance. Used to pass legislation, make appointments, and negotiate with Congress. Regenerates slowly over time. Spent on major actions.")
                 Spacer()
                 Text("\(Int(capital))/\(Int(maxCapital))")
                     .font(.caption2)
@@ -775,6 +807,7 @@ struct StatRow: View {
                 Text(label)
                     .font(.caption2)
                     .foregroundColor(.secondary)
+                    .help(statTooltip)
                 Spacer()
                 Text(String(format: "%.1f", value))
                     .font(.caption2)
@@ -793,6 +826,14 @@ struct StatRow: View {
                 }
             }
             .frame(height: 4)
+        }
+    }
+
+    private var statTooltip: String {
+        switch label {
+        case "Congressional Support": return "Congressional Support: How well you work with Congress. Above 60 means easier legislation passage. Below 40 means obstruction and gridlock."
+        case "Party Unity": return "Party Unity: How united your party is behind you. High unity helps in elections and legislating. Low unity risks primary challenges and defections."
+        default: return label
         }
     }
 }
@@ -817,12 +858,20 @@ struct EventSidebar: View {
                                 .padding(.top, 6)
 
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Current Situation")
+                                Text("This Turn's Actions")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
-                                Text(engine.gameState.world.currentNarrative)
-                                    .font(.caption)
-                                    .foregroundColor(.primary)
+                                if engine.gameState.world.actionResultsThisTurn.isEmpty {
+                                    Text("No actions taken yet.")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    ForEach(engine.gameState.world.actionResultsThisTurn, id: \.self) { result in
+                                        Text(result)
+                                            .font(.caption)
+                                            .foregroundColor(.primary)
+                                    }
+                                }
                             }
                         }
 
@@ -928,8 +977,8 @@ struct SituationFeedItem: View {
 
                 if !entry.effects.isEmpty {
                     HStack(spacing: 4) {
-                        ForEach(Array(entry.effects.prefix(2)), id: \.key) { effect in
-                            Text("\(effect.key): \(effect.value >= 0 ? "+" : "")\(Int(effect.value))")
+                        ForEach(Array(entry.effects.prefix(4)), id: \.key) { effect in
+                            Text("\(humanReadableKey(effect.key)): \(effect.value >= 0 ? "+" : "")\(Int(effect.value))")
                                 .font(.caption2)
                                 .foregroundColor(effect.value >= 0 ? .green : .red)
                                 .padding(.horizontal, 4)
@@ -1013,6 +1062,7 @@ struct EventCard: View {
                 RoundedRectangle(cornerRadius: 2)
                     .fill(categoryColor)
                     .frame(width: 4, height: 35)
+                    .help(categoryTooltip)
 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack {
@@ -1039,7 +1089,8 @@ struct EventCard: View {
                     Text(event.description)
                         .font(.caption2)
                         .foregroundColor(.secondary)
-                        .lineLimit(2)
+                        .lineLimit(4)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Spacer()
@@ -1078,6 +1129,19 @@ struct EventCard: View {
         case .scandal: return .pink
         case .achievement: return .yellow
         case .personal: return .gray
+        }
+    }
+
+    var categoryTooltip: String {
+        switch event.category {
+        case .economic: return "Economic: An event affecting GDP, jobs, inflation, or markets."
+        case .political: return "Political: An event related to Congress, elections, or party politics."
+        case .international: return "International: A foreign policy event involving other nations or global affairs."
+        case .social: return "Social: A cultural or societal event affecting public values and demographics."
+        case .crisis: return "Crisis: A urgent event requiring immediate leadership attention."
+        case .scandal: return "Scandal: A controversy or damaging revelation about you or your administration."
+        case .achievement: return "Achievement: A positive accomplishment that boosts your standing."
+        case .personal: return "Personal: A private or biographical event affecting you or your family."
         }
     }
 }
@@ -1736,6 +1800,7 @@ struct EconomicIndicator: View {
             Text(label)
                 .font(.caption2)
                 .foregroundColor(.secondary)
+                .help(tooltip)
 
             HStack(spacing: 4) {
                 Text(String(format: format, value))
@@ -1752,6 +1817,18 @@ struct EconomicIndicator: View {
             }
         }
         .frame(minWidth: 80)
+    }
+
+    private var tooltip: String {
+        switch label {
+        case "GDP Growth": return "GDP Growth: Annual percentage change in Gross Domestic Product. Above 2% indicates a healthy economy. Negative growth signals recession."
+        case "Unemployment": return "Unemployment: Percentage of the workforce seeking a job. Below 5% is full employment. Above 8% is a serious recession."
+        case "Inflation": return "Inflation: Annual price increase rate. 2-3% is healthy. Above 6% causes political damage. Above 10% is a crisis."
+        case "Consumer Conf.": return "Consumer Confidence: Index measuring public optimism about the economy. Above 70 is strong. Below 50 signals recession."
+        case "Stock Market": return "Stock Market: Indexed value of major exchanges. Reflects investor confidence in future economic conditions."
+        case "National Debt": return "National Debt: Total federal borrowing in trillions. High debt limits future fiscal flexibility."
+        default: return label
+        }
     }
 }
 
@@ -2092,7 +2169,7 @@ struct CommandCenterView: View {
                 onDeliver: {
                     // Costs and effects already applied when action was selected
                     SpeechService.shared.speakDraftSpeech(speechText)
-                    engine.gameState.world.currentNarrative = "You delivered a \(selectedSpeechType.replacingOccurrences(of: "_", with: " ")) speech."
+                    engine.gameState.world.actionResultsThisTurn.append("You delivered a \(selectedSpeechType.replacingOccurrences(of: "_", with: " ")) speech.")
                     isEditingSpeech = false
                 },
                 onGenerate: {
@@ -2118,7 +2195,7 @@ struct CommandCenterView: View {
         // Guard: check if action can be performed
         if !engine.canPerformAction(action) {
             if engine.cooldownRemaining(for: action) > 0 {
-                engine.gameState.world.currentNarrative = "\(action.name) is on cooldown."
+                engine.gameState.world.actionResultsThisTurn.append("\(action.name) is on cooldown.")
             }
             return
         }
@@ -2199,6 +2276,7 @@ struct ResourcePill: View {
                 Text(label)
                     .font(.caption2)
                     .foregroundColor(.secondary)
+                    .help(resourceTooltip)
                 Text(value)
                     .font(.caption)
                     .fontWeight(.medium)
@@ -2208,6 +2286,15 @@ struct ResourcePill: View {
         .padding(.vertical, 4)
         .background(color.opacity(0.1))
         .cornerRadius(8)
+    }
+
+    private var resourceTooltip: String {
+        switch label {
+        case "Political Capital": return "Political Capital: The currency of governance. Used for major actions. Regenerates over time."
+        case "Campaign Funds": return "Campaign Funds: Money available for campaign activities. Raised through donors and events. Spent on rallies, ads, and travel."
+        case "Media Cycles": return "Media Cycles: Number of news cycles you can dominate. Each major action consumes a cycle. Refreshes weekly."
+        default: return label
+        }
     }
 }
 
@@ -2231,6 +2318,7 @@ struct CategoryTab: View {
             .cornerRadius(8)
         }
         .buttonStyle(.plain)
+        .help(categoryTooltip)
     }
 
     private var categoryIcon: String {
@@ -2241,6 +2329,17 @@ struct CategoryTab: View {
         case .executive: return "building.columns.fill"
         case .political: return "person.3.fill"
         case .personnel: return "person.badge.key.fill"
+        }
+    }
+
+    private var categoryTooltip: String {
+        switch category {
+        case .communication: return "Communication: Speeches, interviews, press conferences, and statements. Shapes media narrative and public opinion."
+        case .travel: return "Travel: Campaign rallies, swing state visits, and diplomatic trips. Builds momentum and visibility."
+        case .diplomatic: return "Diplomatic: Meetings with foreign leaders, state dinners, and summits. Affects international relationships."
+        case .executive: return "Executive: Orders, vetoes, legislation signing. High-impact presidential powers but use sparingly."
+        case .political: return "Political: Fundraising, negotiations, and base rallying. Essential for campaign and governing."
+        case .personnel: return "Personnel: Cabinet meetings, advisor consultations, and staffing decisions. Shapes your administration."
         }
     }
 }
@@ -2421,6 +2520,7 @@ struct ActionCard: View {
                     .padding(.vertical, 2)
                     .background(Color.orange.opacity(0.1))
                     .cornerRadius(4)
+                    .help(costTooltip(cost.type))
                 }
 
                 Spacer()
@@ -2437,6 +2537,7 @@ struct ActionCard: View {
                     .padding(.vertical, 2)
                     .background(Color.red.opacity(0.1))
                     .cornerRadius(4)
+                    .help("This action is on cooldown and cannot be used again for \(cooldownRemaining) more turn\(cooldownRemaining == 1 ? "" : "s").")
                 } else if action.cooldown > 0 {
                     HStack(spacing: 2) {
                         Image(systemName: "clock")
@@ -2445,6 +2546,7 @@ struct ActionCard: View {
                             .font(.caption2)
                     }
                     .foregroundColor(.secondary)
+                    .help("Using this action will put it on cooldown for \(action.cooldown) turn\(action.cooldown == 1 ? "" : "s").")
                 }
             }
         }
@@ -2462,15 +2564,27 @@ struct ActionCard: View {
         case .mediaCycle: return "tv"
         }
     }
+
+    private func costTooltip(_ type: ActionCostType) -> String {
+        switch type {
+        case .politicalCapital: return "Political Capital: The main resource for governing actions. Regenerates over time."
+        case .time: return "Time: How many weekly turns this action consumes. Time is limited each week."
+        case .money: return "Campaign Funds: Money spent on this action. Fundraising can replenish it."
+        case .mediaCycle: return "Media Cycle: News cycle attention. Limited per week. High-value actions consume cycles."
+        }
+    }
 }
 
 // MARK: - Briefings View
 
 struct BriefingsView: View {
-    @Binding var briefings: [Briefing]
     @EnvironmentObject var engine: SimulationEngine
     @Environment(\.dismiss) var dismiss
     @State private var selectedBriefing: Briefing?
+
+    private var briefings: [Briefing] {
+        engine.gameState.briefings
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -2493,12 +2607,6 @@ struct BriefingsView: View {
             Divider()
 
             if briefings.isEmpty {
-                // Generate some sample briefings
-                Color.clear
-                    .onAppear {
-                        generateSampleBriefings()
-                    }
-
                 VStack(spacing: 16) {
                     Image(systemName: "tray")
                         .font(.system(size: 48))
@@ -2517,9 +2625,7 @@ struct BriefingsView: View {
                         ForEach(briefings) { briefing in
                             BriefingCard(briefing: briefing) {
                                 selectedBriefing = briefing
-                                if let index = briefings.firstIndex(where: { $0.id == briefing.id }) {
-                                    briefings[index].isRead = true
-                                }
+                                engine.markBriefingAsRead(briefing.id)
                             }
                         }
                     }
@@ -2529,57 +2635,11 @@ struct BriefingsView: View {
         }
         .frame(width: 500, height: 450)
         .sheet(item: $selectedBriefing) { briefing in
-            BriefingDetailView(briefing: briefing) {
-                // Resolve briefing
-                if let index = briefings.firstIndex(where: { $0.id == briefing.id }) {
-                    briefings[index].isResolved = true
-                }
+            BriefingDetailView(briefing: briefing) { selectedIndex in
+                engine.resolveBriefing(briefing.id, selectedOption: selectedIndex)
                 selectedBriefing = nil
             }
         }
-    }
-
-    private func generateSampleBriefings() {
-        let sampleBriefings = [
-            Briefing(
-                type: .intelligence,
-                title: "Foreign Leader Interest",
-                summary: "Intelligence reports that a foreign leader has expressed interest in direct talks with you.",
-                urgency: 2,
-                turnReceived: engine.gameState.world.currentTurn,
-                options: [
-                    BriefingOption(label: "Schedule call", description: "Arrange a direct conversation with the leader.", pros: ["Strengthens relationship", "Signals engagement"], cons: ["Time commitment", "May create obligations"]),
-                    BriefingOption(label: "Send emissary", description: "Send a trusted representative to feel out the request.", pros: ["Information gathering", "Keeps options open"], cons: ["Less personal", "May frustrate the leader"]),
-                    BriefingOption(label: "Delay response", description: "Acknowledge but postpone to a later date.", pros: ["Buys time", "No commitment"], cons: ["Sends lukewarm signal", "May lose the opening"]),
-                ]
-            ),
-            Briefing(
-                type: .campaign,
-                title: "Fundraising Opportunity",
-                summary: "A major donor is hosting a fundraiser next week. Your team needs direction.",
-                urgency: 3,
-                turnReceived: engine.gameState.world.currentTurn,
-                deadline: engine.gameState.world.currentTurn + 2,
-                options: [
-                    BriefingOption(label: "Attend personally", description: "Show up and make the case directly.", pros: ["Maximizes fundraising", "Personal touch"], cons: ["Takes full day", "May overcommit to donor"]),
-                    BriefingOption(label: "Send surrogate", description: "Send your campaign manager or a close ally.", pros: ["Still captures goodwill", "Your time free"], cons: ["Less effective at fundraising", "Donor may be disappointed"]),
-                    BriefingOption(label: "Skip event", description: "Skip it entirely and focus on other priorities.", pros: ["Focus on message", "No donor entanglement"], cons: ["Major donor alienated", "Lost fundraising opportunity"]),
-                ]
-            ),
-            Briefing(
-                type: .legislative,
-                title: "Congressional Push",
-                summary: "Your allies in Congress want to know if you'll campaign for them this cycle.",
-                urgency: 2,
-                turnReceived: engine.gameState.world.currentTurn,
-                options: [
-                    BriefingOption(label: "Campaign actively", description: "Hit the trail hard for your allies.", pros: ["Strengthens relationships", "Helps their chances"], cons: ["Drains your time and energy", "Political risk if they lose"]),
-                    BriefingOption(label: "Limited engagement", description: "Make a few targeted appearances.", pros: ["Balanced approach", "Conserves resources"], cons: ["May disappoint allies", "Half-measures satisfy no one"]),
-                    BriefingOption(label: "Focus on own race", description: "Keep your powder dry and focus on your own campaign.", pros: ["Maximizes your energy", "No political baggage"], cons: ["Allies feel abandoned", "Weakens coalition"]),
-                ]
-            )
-        ]
-        briefings = sampleBriefings
     }
 }
 
@@ -2795,7 +2855,7 @@ struct SaveLoadView: View {
 
 struct BriefingDetailView: View {
     let briefing: Briefing
-    let onRespond: () -> Void
+    let onRespond: (Int) -> Void
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
@@ -2849,9 +2909,9 @@ struct BriefingDetailView: View {
                 Text("Your Options")
                     .font(.headline)
 
-                ForEach(briefing.options) { option in
+                ForEach(Array(briefing.options.enumerated()), id: \.element.id) { index, option in
                     Button(action: {
-                        onRespond()
+                        onRespond(index)
                         dismiss()
                     }) {
                         VStack(alignment: .leading, spacing: 6) {
