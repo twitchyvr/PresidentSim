@@ -445,6 +445,37 @@ class SimulationEngine: ObservableObject {
             let approvalEffect = (gameState.world.approvalRating - 50) / 5
 
             gameState.popularVoteMargin = momentumEffect + approvalEffect
+
+            // Update state polling based on momentum and national environment
+            updateStatePolling()
+        }
+    }
+
+    private func updateStatePolling() {
+        // Key swing states that shift most with campaign momentum
+        let swingStates = ["PA", "MI", "WI", "AZ", "NV", "GA", "NC", "FL", "OH"]
+        let safePlayerStates = ["CA", "NY", "IL", "MA", "WA", "OR", "MD", "NJ", "VT", "RI", "CT", "HI", "ME"]
+        let safeOpponentStates = ["TX", "AL", "MS", "LA", "AR", "OK", "WV", "KY", "TN", "IN", "ID", "UT", "WY", "MT", "ND", "SD", "NE"]
+
+        let nationalTrend = gameState.popularVoteMargin / 2 // How player is trending nationally
+
+        for state in swingStates {
+            let current = gameState.pollingData[state] ?? 50.0
+            let shift = nationalTrend * Double.random(in: 0.5...1.5) + Double.random(in: -2...2)
+            let newPolling = max(20, min(80, current + shift))
+            gameState.pollingData[state] = newPolling
+        }
+
+        for state in safePlayerStates {
+            let current = gameState.pollingData[state] ?? 50.0
+            let shift = nationalTrend * Double.random(in: 0.2...0.5) + Double.random(in: -1...1)
+            gameState.pollingData[state] = max(50, min(85, current + shift))
+        }
+
+        for state in safeOpponentStates {
+            let current = gameState.pollingData[state] ?? 50.0
+            let shift = nationalTrend * Double.random(in: 0.2...0.5) + Double.random(in: -1...1)
+            gameState.pollingData[state] = max(15, min(50, current + shift))
         }
     }
 
