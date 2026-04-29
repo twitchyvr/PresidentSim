@@ -204,8 +204,8 @@ Congress members, foreign leaders, donors — AI models their likely responses.
 - [x] MiniMax service (MiniMaxService with consequence calculation)
 - [x] Consequence calculation (AI calculates multi-domain ripple effects)
 - [x] Event generation (AI generates phase-appropriate events)
-- [ ] Speech generation (TODO)
-- [ ] NPC behavior modeling (TODO)
+- [x] Speech generation (MiniMax AI drafts speeches via SpeechEditorSheet + generateAISpeech)
+- [x] NPC behavior modeling (MiniMax AI models Congress/donor/media/foreign leader reactions after actions)
 
 ### Phase 4: Polish (in progress)
 - [x] Electoral map with 50 states and EV counting
