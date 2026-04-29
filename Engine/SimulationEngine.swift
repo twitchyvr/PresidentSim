@@ -178,6 +178,9 @@ class SimulationEngine: ObservableObject {
         // 3. Resolve any pending decisions that expired
         resolveExpiredDecisions()
 
+        // 3b. Possibly generate a new decision (keeps game moving)
+        possiblyGenerateDecision()
+
         // 4. Update political calculations
         updatePolling()
 
@@ -554,6 +557,7 @@ class SimulationEngine: ObservableObject {
     func selectVP(_ name: String) {
         gameState.chosenVP = name
         gameState.world.actionResultsThisTurn.append("\(name) has been selected as your running mate.")
+        gameState.transitionToNextPhase()
     }
 
     // MARK: - Diplomacy (DiplomacyConversationEngine wiring)
@@ -1650,6 +1654,99 @@ class SimulationEngine: ObservableObject {
         )
 
         gameState.pendingDecisions.append(decision1)
+    }
+
+    private func possiblyGenerateDecision() {
+        // Don't spam decisions — cap at 2 pending
+        guard gameState.pendingDecisions.count < 2 else { return }
+        // ~25% chance per turn to generate a new decision
+        guard Double.random(in: 0...1) < 0.25 else { return }
+
+        let templates: [Decision] = [
+            Decision(
+                prompt: "Media Interview Request",
+                context: "A major network wants exclusive access. Your team is divided on how to handle it.",
+                options: [
+                    DecisionOption(text: "Accept the interview", isRisky: false, expectedBenefits: ["approvalRating": 2.0, "campaignMomentum": 0.5]),
+                    DecisionOption(text: "Send a surrogate instead", isRisky: false, expectedBenefits: ["approvalRating": 0.5]),
+                    DecisionOption(text: "Decline — avoid risk", isRisky: false, expectedBenefits: ["approvalRating": -1.0])
+                ],
+                turn: gameState.world.currentTurn,
+                phase: gameState.phase
+            ),
+            Decision(
+                prompt: "Fundraiser Opportunity",
+                context: "A wealthy donor is hosting an exclusive fundraiser, but attendance requires aligning with their interests.",
+                options: [
+                    DecisionOption(text: "Attend and accept the donor's views", isRisky: true, riskProbability: 0.3, expectedBenefits: ["campaignMomentum": 2.0, "approvalRating": -2.0]),
+                    DecisionOption(text: "Attend but keep your distance", isRisky: false, expectedBenefits: ["campaignMomentum": 1.0]),
+                    DecisionOption(text: "Skip it — protect your brand", isRisky: false, expectedBenefits: ["approvalRating": 1.0, "partyUnity": 2.0])
+                ],
+                turn: gameState.world.currentTurn,
+                phase: gameState.phase
+            ),
+            Decision(
+                prompt: "Opposition Research Discovery",
+                context: "Your team has uncovered damaging information about your opponent. How do you use it?",
+                options: [
+                    DecisionOption(text: "Go public immediately", isRisky: true, riskProbability: 0.5, expectedBenefits: ["campaignMomentum": 3.0, "approvalRating": -3.0]),
+                    DecisionOption(text: "Use it as leverage quietly", isRisky: false, expectedBenefits: ["campaignMomentum": 1.5]),
+                    DecisionOption(text: "Ignore it — run a positive campaign", isRisky: false, expectedBenefits: ["approvalRating": 2.0, "partyUnity": 1.0])
+                ],
+                turn: gameState.world.currentTurn,
+                phase: gameState.phase
+            ),
+            Decision(
+                prompt: "Campaign Rally Planning",
+                context: "Your strategists propose a major rally in a key swing state.",
+                options: [
+                    DecisionOption(text: "Go big — large rally with media coverage", isRisky: true, riskProbability: 0.3, expectedBenefits: ["campaignMomentum": 3.0]),
+                    DecisionOption(text: "Small targeted event — safer", isRisky: false, expectedBenefits: ["campaignMomentum": 1.0, "approvalRating": 1.0]),
+                    DecisionOption(text: "Cancel — save resources", isRisky: false, expectedBenefits: ["partyUnity": 1.0])
+                ],
+                turn: gameState.world.currentTurn,
+                phase: gameState.phase
+            ),
+            Decision(
+                prompt: "Scandal Response Required",
+                context: "A minor scandal has surfaced involving a senior staff member. The press is demanding comment.",
+                options: [
+                    DecisionOption(text: "Fire them immediately", isRisky: false, expectedBenefits: ["approvalRating": 2.0, "partyUnity": -2.0]),
+                    DecisionOption(text: "Stand by them publicly", isRisky: true, riskProbability: 0.6, expectedBenefits: ["partyUnity": 3.0, "approvalRating": -4.0]),
+                    DecisionOption(text: "No comment — wait it out", isRisky: true, riskProbability: 0.4, expectedBenefits: ["approvalRating": -1.0])
+                ],
+                turn: gameState.world.currentTurn,
+                phase: gameState.phase,
+                isUrgent: true,
+                deadline: gameState.world.currentTurn + 2
+            ),
+            Decision(
+                prompt: "Debate Prep Offer",
+                context: "Your running mate suggests an intensive debate preparation session.",
+                options: [
+                    DecisionOption(text: "Full debate prep — 3 days", isRisky: false, expectedBenefits: ["campaignMomentum": 2.0]),
+                    DecisionOption(text: "Light prep — trust your instincts", isRisky: false, expectedBenefits: ["campaignMomentum": 0.5, "approvalRating": 0.5]),
+                    DecisionOption(text: "Skip prep — focus on retail politics", isRisky: true, riskProbability: 0.3, expectedBenefits: ["approvalRating": 1.0])
+                ],
+                turn: gameState.world.currentTurn,
+                phase: gameState.phase
+            )
+        ]
+
+        if let decision = templates.randomElement() {
+            var mutableDecision = decision
+            mutableDecision = Decision(
+                id: UUID(),
+                prompt: decision.prompt,
+                context: decision.context,
+                options: decision.options,
+                turn: gameState.world.currentTurn,
+                phase: gameState.phase,
+                isUrgent: decision.isUrgent,
+                deadline: decision.deadline
+            )
+            gameState.pendingDecisions.append(mutableDecision)
+        }
     }
 
     private func calculateSimpleNarrative(decision: Decision, option: DecisionOption, outcome: DecisionOutcome) -> String {
