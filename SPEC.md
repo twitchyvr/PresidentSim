@@ -214,5 +214,5 @@ Congress members, foreign leaders, donors — AI models their likely responses.
 - [x] Command Center with 20+ actions
 - [x] Briefings inbox system
 - [x] Persistence - Save/load game state
-- [ ] Speech synthesis (TODO)
+- [x] Speech synthesis - SpeechService wired to "Make Speech" action (TTS playback)
 - [ ] Replayability features (TODO)

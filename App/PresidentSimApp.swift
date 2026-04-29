@@ -2121,6 +2121,12 @@ struct CommandCenterView: View {
         // Show brief feedback
         engine.gameState.world.currentNarrative = "You used: \(action.name)"
 
+        // Speak the speech if it's a speech action
+        if action.name == "Make Speech" {
+            let speechText = "My fellow Americans, we stand at a pivotal moment in our nation's history. Together, we will build a stronger economy, unite our people, and secure a brighter future for generations to come. This is not about Democrat or Republican — this is about the American people, and we will rise together."
+            SpeechService.shared.speakDraftSpeech(speechText)
+        }
+
         // Dismiss after action
         dismiss()
     }

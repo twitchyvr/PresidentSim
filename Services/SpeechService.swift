@@ -5,6 +5,8 @@ import AVFoundation
 // Handles text-to-speech for speeches and announcements
 
 class SpeechService {
+    static let shared = SpeechService()
+
     private let synthesizer = AVSpeechSynthesizer()
 
     var isSpeaking: Bool {
