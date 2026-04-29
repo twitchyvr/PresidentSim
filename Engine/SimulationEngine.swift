@@ -13,6 +13,7 @@ class SimulationEngine: ObservableObject {
     private let useAI: Bool
     private let persistence = PersistenceService()
     private var currentSaveName: String?
+    private var debugTimer: Timer?
 
     init(useAI: Bool = true) {
         self.gameState = GameState()
@@ -35,6 +36,8 @@ class SimulationEngine: ObservableObject {
             description: "\(player.name) announces presidential candidacy"
         ))
         currentSaveName = nil
+        writeDebugSnapshot()
+        startDebugMonitoring(interval: 2.0)
     }
 
     // MARK: - Persistence
@@ -112,7 +115,12 @@ class SimulationEngine: ObservableObject {
         // 6. Check for game-ending conditions
         checkGameEndConditions()
 
-        // 7. Clamp all resources to valid ranges (final safety net)
+        // 7. Regenerate political capital (small amount per turn)
+        let pcRegen = 3.0  // base regen per turn
+        let approvalBonus = gameState.world.approvalRating / 100.0 * 2.0  // 0-2 extra at 0-100% approval
+        gameState.resources.politicalCapital = min(100, gameState.resources.politicalCapital + pcRegen + approvalBonus)
+
+        // 8. Clamp all resources to valid ranges (final safety net)
         clampResources()
 
         // Ensure minimum visible processing time for UX
@@ -122,6 +130,7 @@ class SimulationEngine: ObservableObject {
         }
 
         isProcessing = false
+        writeDebugSnapshot()
     }
 
     // MARK: - Player Actions
@@ -198,6 +207,7 @@ class SimulationEngine: ObservableObject {
         ))
 
         isProcessing = false
+        writeDebugSnapshot()
     }
 
     func declareCandidacy() async {
@@ -645,6 +655,105 @@ class SimulationEngine: ObservableObject {
         gameState.electoralVotes = max(0, min(538, gameState.electoralVotes))
         gameState.popularVoteMargin = max(-20, min(20, gameState.popularVoteMargin))
     }
+
+    // MARK: - Debug State (for AI observability)
+
+    private var debugSnapshotURL: URL {
+        FileManager.default
+            .homeDirectoryForCurrentUser
+            .appendingPathComponent(".president_sim/debug_state.json")
+    }
+
+    /// Write a full debug snapshot of the current game state as JSON.
+    /// Read by DebugCapture to give the AI full visibility into the app.
+    func writeDebugSnapshot() {
+        let dir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".president_sim")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+
+        let aiSummary = gameState.toAISummary()
+        let debug = DebugSnapshot(
+            timestamp: ISO8601DateFormatter().string(from: Date()),
+            turn: gameState.world.currentTurn,
+            year: gameState.world.currentYear,
+            phase: gameState.phase.rawValue,
+            turnDescription: gameState.world.turnDescription,
+            politicalCapital: gameState.resources.politicalCapital,
+            campaignFunds: gameState.resources.campaignFunds,
+            mediaCycles: gameState.resources.mediaCycles,
+            momentum: gameState.resources.momentum,
+            approvalRating: gameState.world.approvalRating,
+            approvalHistory: gameState.resources.approvalHistory,
+            gdpGrowth: gameState.world.gdpGrowth,
+            unemployment: gameState.world.unemployment,
+            inflation: gameState.world.inflation,
+            partyUnity: gameState.world.partyUnityScore,
+            congressionalSupport: gameState.world.congressionalSupport,
+            donorSatisfaction: gameState.world.donorSatisfaction,
+            mediaFavorability: gameState.world.mediaFavorability,
+            globalInfluence: gameState.world.globalInfluence,
+            internationalPrestige: gameState.world.internationalPrestige,
+            currentNarrative: gameState.world.currentNarrative,
+            trendingTopic: gameState.world.trendingTopic,
+            pendingDecisions: gameState.pendingDecisions.map { $0.prompt },
+            activeEvents: gameState.activeEvents.map { $0.title },
+            recentDecisions: gameState.recentDecisions.prefix(5).map { $0.decision.prompt },
+            historicalLedger: gameState.world.historicalLedger.suffix(10).map { $0.title },
+            aiSummary: aiSummary
+        )
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        if let data = try? encoder.encode(debug) {
+            try? data.write(to: debugSnapshotURL)
+        }
+    }
+
+    /// Start writing debug snapshots every `interval` seconds.
+    func startDebugMonitoring(interval: TimeInterval = 2.0) {
+        stopDebugMonitoring()
+        debugTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.writeDebugSnapshot()
+            }
+        }
+    }
+
+    /// Stop background debug monitoring.
+    func stopDebugMonitoring() {
+        debugTimer?.invalidate()
+        debugTimer = nil
+    }
+}
+
+/// Full debug snapshot structure — everything the AI needs to understand the game.
+struct DebugSnapshot: Codable {
+    let timestamp: String
+    let turn: Int
+    let year: Int
+    let phase: String
+    let turnDescription: String
+    let politicalCapital: Double
+    let campaignFunds: Double
+    let mediaCycles: Int
+    let momentum: Double
+    let approvalRating: Double
+    let approvalHistory: [Double]
+    let gdpGrowth: Double
+    let unemployment: Double
+    let inflation: Double
+    let partyUnity: Double
+    let congressionalSupport: Double
+    let donorSatisfaction: Double
+    let mediaFavorability: Double
+    let globalInfluence: Double
+    let internationalPrestige: Double
+    let currentNarrative: String
+    let trendingTopic: String
+    let pendingDecisions: [String]
+    let activeEvents: [String]
+    let recentDecisions: [String]
+    let historicalLedger: [String]
+    let aiSummary: MiniMaxService.AIGameStateSummary
 }
 
 // MARK: - GameState Extension for AI
