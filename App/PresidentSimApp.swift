@@ -706,17 +706,18 @@ struct CandidateStatBar: View {
     let value: Double
     let max: Double
     let color: Color
+    @ScaledMetric private var labelSize: CGFloat = 10
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
                 Text(label)
-                    .font(.caption2)
+                    .font(.system(size: labelSize))
                     .foregroundColor(.secondary)
                     .help(statTooltip)
                 Spacer()
                 Text(String(format: "%.0f", value))
-                    .font(.caption2)
+                    .font(.system(size: labelSize))
                     .fontWeight(.medium)
             }
             GeometryReader { geometry in
@@ -754,6 +755,8 @@ struct CandidateStatBar: View {
 
 struct ApprovalGaugeView: View {
     let approval: Double
+    @ScaledMetric private var titleSize: CGFloat = 20
+    @ScaledMetric private var captionSize: CGFloat = 10
 
     var gaugeColor: Color {
         if approval >= 60 { return .positive }
@@ -774,10 +777,10 @@ struct ApprovalGaugeView: View {
 
                 VStack(spacing: 0) {
                     Text(String(format: "%.0f", approval))
-                        .font(.title2)
+                        .font(.system(size: titleSize))
                         .fontWeight(.bold)
                     Text("%")
-                        .font(.caption2)
+                        .font(.system(size: captionSize))
                         .foregroundColor(.secondary)
                 }
             }
@@ -785,7 +788,7 @@ struct ApprovalGaugeView: View {
             .help("Approval Rating: Percentage of Americans who approve of your performance. Above 60% is strong; below 40% is weak. Affects electoral prospects, congressional leverage, and media coverage.")
 
             Text(approvalDescription)
-                .font(.caption2)
+                .font(.system(size: captionSize))
                 .foregroundColor(.secondary)
         }
     }
@@ -799,6 +802,7 @@ struct ApprovalGaugeView: View {
 
 struct MomentumIndicator: View {
     let momentum: Double
+    @ScaledMetric private var captionSize: CGFloat = 12
 
     var body: some View {
         HStack(spacing: 4) {
@@ -807,7 +811,7 @@ struct MomentumIndicator: View {
                 .font(.caption)
 
             Text(String(format: "%.1f", abs(momentum)))
-                .font(.caption)
+                .font(.system(size: captionSize))
                 .fontWeight(.medium)
                 .foregroundColor(momentumColor)
         }
@@ -982,18 +986,18 @@ struct StatRow: View {
     let value: Double
     let max: Double
     let color: Color
+    @ScaledMetric private var labelSize: CGFloat = 10
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
                 Text(label)
-                    .font(.caption2)
+                    .font(.system(size: labelSize))
                     .foregroundColor(.secondary)
                     .help(statTooltip)
                 Spacer()
                 Text(String(format: "%.1f", value))
-                    .font(.caption2)
-                    .fontWeight(.medium)
+                    .font(.system(size: labelSize, weight: .medium))
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
@@ -1416,13 +1420,16 @@ struct GameMainView: View {
 
 struct PreCampaignView: View {
     @EnvironmentObject var engine: SimulationEngine
+    @ScaledMetric private var headlineSize: CGFloat = 17
+    @ScaledMetric private var titleSize: CGFloat = 28
+    @ScaledMetric private var captionSize: CGFloat = 12
 
     var body: some View {
         VStack(spacing: 24) {
             // Phase header
             HStack {
                 Text(engine.gameState.phase.rawValue.uppercased())
-                    .font(.headline)
+                    .font(.system(size: headlineSize))
                     .foregroundColor(.playerAccent)
                 Text("•")
                     .foregroundColor(.secondary)
@@ -1433,7 +1440,7 @@ struct PreCampaignView: View {
             }
 
             Text("Your Journey to the White House")
-                .font(.title)
+                .font(.system(size: titleSize))
 
             Text("Before you lies the most consequential political journey in American life. Years of planning, millions of dollars, and countless hours of campaigning stand between you and the Oval Office.")
                 .multilineTextAlignment(.center)
@@ -1445,7 +1452,7 @@ struct PreCampaignView: View {
                     Text("Configure your candidate in the New Game setup")
                         .foregroundColor(.secondary)
                     Text("Click 'New Game' in the toolbar to begin")
-                        .font(.caption)
+                        .font(.system(size: captionSize))
                         .foregroundColor(.tipAccent)
                 }
             } else {
@@ -1461,7 +1468,7 @@ struct PreCampaignView: View {
                     .accessibilityHint("Formally declares your candidacy and begins the primary campaign season")
 
                     Text("This starts the campaign trail. Your first primary debates and fundraising calls will begin.")
-                        .font(.caption)
+                        .font(.system(size: captionSize))
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 400)
@@ -1474,13 +1481,15 @@ struct PreCampaignView: View {
 
 struct CampaignView: View {
     @EnvironmentObject var engine: SimulationEngine
+    @ScaledMetric private var headlineSize: CGFloat = 17
+    @ScaledMetric private var captionSize: CGFloat = 12
 
     var body: some View {
         VStack(spacing: 16) {
             // Phase header
             HStack {
                 Text(engine.gameState.phase.rawValue.uppercased())
-                    .font(.headline)
+                    .font(.system(size: headlineSize))
                     .foregroundColor(.playerAccent)
                 Text("•")
                     .foregroundColor(.secondary)
@@ -1499,7 +1508,7 @@ struct CampaignView: View {
             if !engine.gameState.primaryOpponents.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Primary Opponents")
-                        .font(.headline)
+                        .font(.system(size: headlineSize))
 
                     ForEach(engine.gameState.primaryOpponents) { opponent in
                         HStack {
@@ -1529,13 +1538,16 @@ struct CampaignView: View {
 
 struct ConventionView: View {
     @EnvironmentObject var engine: SimulationEngine
+    @ScaledMetric private var headlineSize: CGFloat = 17
+    @ScaledMetric private var titleSize: CGFloat = 28
+    @ScaledMetric private var captionSize: CGFloat = 12
 
     var body: some View {
         VStack(spacing: 16) {
             // Phase header
             HStack {
                 Text(engine.gameState.phase.rawValue.uppercased())
-                    .font(.headline)
+                    .font(.system(size: headlineSize))
                     .foregroundColor(.playerAccent)
                 Text("•")
                     .foregroundColor(.secondary)
@@ -1546,7 +1558,7 @@ struct ConventionView: View {
             }
 
             Text("National Convention")
-                .font(.title)
+                .font(.system(size: titleSize))
 
             Text("Your party gathers to formally nominate you as their candidate. The choice of running mate is yours to make.")
                 .foregroundColor(.secondary)
@@ -1554,10 +1566,10 @@ struct ConventionView: View {
             if engine.gameState.chosenVP == nil {
                 VStack(spacing: 8) {
                     Text("Select a Vice Presidential running mate")
-                        .font(.headline)
+                        .font(.system(size: headlineSize))
 
                     Text("Your VP choice affects voter demographics, party factions, and governing style.")
-                        .font(.caption)
+                        .font(.system(size: captionSize))
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 400)
@@ -1573,7 +1585,7 @@ struct ConventionView: View {
                 }
             } else {
                 Text("Running Mate: \(engine.gameState.chosenVP!)")
-                    .font(.headline)
+                    .font(.system(size: headlineSize))
             }
         }
         .padding()
@@ -1582,13 +1594,15 @@ struct ConventionView: View {
 
 struct ElectionView: View {
     @EnvironmentObject var engine: SimulationEngine
+    @ScaledMetric private var headlineSize: CGFloat = 17
+    @ScaledMetric private var titleSize: CGFloat = 28
 
     var body: some View {
         VStack(spacing: 16) {
             // Phase header
             HStack {
                 Text(engine.gameState.phase.rawValue.uppercased())
-                    .font(.headline)
+                    .font(.system(size: headlineSize))
                     .foregroundColor(.playerAccent)
                 Text("•")
                     .foregroundColor(.secondary)
@@ -1599,7 +1613,7 @@ struct ElectionView: View {
             }
 
             Text("General Election")
-                .font(.title)
+                .font(.system(size: titleSize))
 
             // Electoral Map
             ElectoralMapView()
@@ -1620,6 +1634,9 @@ struct ElectionView: View {
 struct ElectoralMapView: View {
     @EnvironmentObject var engine: SimulationEngine
     @State private var selectedState: ElectoralState?
+    @ScaledMetric private var titleSize: CGFloat = 28
+    @ScaledMetric private var headlineSize: CGFloat = 17
+    @ScaledMetric private var captionSize: CGFloat = 12
 
     // Simplified state data - key states for demonstration
     let states: [ElectoralState] = [
@@ -1680,25 +1697,25 @@ struct ElectoralMapView: View {
             HStack(spacing: 24) {
                 VStack {
                     Text("\(playerEVs)")
-                        .font(.title)
+                        .font(.system(size: titleSize))
                         .fontWeight(.bold)
                         .foregroundColor(.playerAccent)
                     Text("Your EVs")
-                        .font(.caption)
+                        .font(.system(size: captionSize))
                         .foregroundColor(.secondary)
                 }
 
                 Text("270 to win")
-                    .font(.headline)
+                    .font(.system(size: headlineSize))
                     .foregroundColor(.secondary)
 
                 VStack {
                     Text("\(opponentEVs)")
-                        .font(.title)
+                        .font(.system(size: titleSize))
                         .fontWeight(.bold)
                         .foregroundColor(.opponentAccent)
                     Text("Opponent EVs")
-                        .font(.caption)
+                        .font(.system(size: captionSize))
                         .foregroundColor(.secondary)
                 }
 
@@ -1706,10 +1723,10 @@ struct ElectoralMapView: View {
 
                 VStack(alignment: .trailing) {
                     Text("\(swingEVs) Tossup")
-                        .font(.caption)
+                        .font(.system(size: captionSize))
                         .foregroundColor(.tossupAccent)
                     Text("Swing State EVs")
-                        .font(.caption2)
+                        .font(.system(size: captionSize))
                         .foregroundColor(.secondary)
                 }
             }
@@ -1738,7 +1755,7 @@ struct ElectoralMapView: View {
                     .accessibilityIdentifier("electoral.legend.tossup")
                 Spacer()
             }
-            .font(.caption)
+            .font(.system(size: captionSize))
             .padding(.horizontal)
         }
         .sheet(item: $selectedState) { state in
@@ -1794,14 +1811,14 @@ enum StateRegion {
 struct StateCell: View {
     let state: ElectoralState
     let standing: StateStanding
+    @ScaledMetric private var labelSize: CGFloat = 9
 
     var body: some View {
         VStack(spacing: 2) {
             Text(state.abbreviation)
-                .font(.caption2)
-                .fontWeight(.bold)
+                .font(.system(size: labelSize, weight: .bold))
             Text("\(state.electoralVotes)")
-                .font(.caption2)
+                .font(.system(size: labelSize))
         }
         .frame(width: 50, height: 40)
         .background(standingColor.opacity(0.8))
@@ -1927,13 +1944,15 @@ struct StateDetailView: View {
 
 struct TransitionView: View {
     @EnvironmentObject var engine: SimulationEngine
+    @ScaledMetric private var headlineSize: CGFloat = 17
+    @ScaledMetric private var titleSize: CGFloat = 28
 
     var body: some View {
         VStack(spacing: 16) {
             // Phase header
             HStack {
                 Text(engine.gameState.phase.rawValue.uppercased())
-                    .font(.headline)
+                    .font(.system(size: headlineSize))
                     .foregroundColor(.playerAccent)
                 Text("•")
                     .foregroundColor(.secondary)
@@ -1944,7 +1963,7 @@ struct TransitionView: View {
             }
 
             Text("Transition Period")
-                .font(.title)
+                .font(.system(size: titleSize))
 
             Text("The election is won. For the next two months, you will prepare to take office.")
                 .foregroundColor(.secondary)
@@ -1958,15 +1977,17 @@ struct TransitionView: View {
 
 struct PresidencyView: View {
     @EnvironmentObject var engine: SimulationEngine
+    @ScaledMetric private var headlineSize: CGFloat = 17
+    @ScaledMetric private var captionSize: CGFloat = 12
 
     var body: some View {
         VStack(spacing: 16) {
             HStack {
                 VStack(alignment: .leading) {
                     Text("Term \(engine.gameState.currentTerm)")
-                        .font(.headline)
+                        .font(.system(size: headlineSize))
                     Text(engine.gameState.turnDescription)
-                        .font(.caption)
+                        .font(.system(size: captionSize))
                         .foregroundColor(.secondary)
                 }
 
@@ -1974,9 +1995,9 @@ struct PresidencyView: View {
 
                 VStack(alignment: .trailing) {
                     Text("Bills Signed: \(engine.gameState.billsSigned)")
-                        .font(.caption)
+                        .font(.system(size: captionSize))
                     Text("Executive Orders: \(engine.gameState.executiveOrders)")
-                        .font(.caption)
+                        .font(.system(size: captionSize))
                 }
             }
 
@@ -1989,15 +2010,17 @@ struct PresidencyView: View {
 struct ExitedView: View {
     @EnvironmentObject var engine: SimulationEngine
     @Binding var showNewGame: Bool
+    @ScaledMetric private var titleSize: CGFloat = 28
+    @ScaledMetric private var headlineSize: CGFloat = 17
 
     var body: some View {
         VStack(spacing: 24) {
             Text("Your Presidency Has Ended")
-                .font(.title)
+                .font(.system(size: titleSize))
 
             if let exitType = engine.gameState.exitType {
                 Text(exitType.description)
-                    .font(.headline)
+                    .font(.system(size: headlineSize))
                     .foregroundColor(.secondary)
             }
 
@@ -2132,6 +2155,8 @@ struct EconomicIndicator: View {
     let format: String
     let isPositiveGood: Bool
     var trend: Double = 0
+    @ScaledMetric private var labelSize: CGFloat = 10
+    @ScaledMetric private var valueSize: CGFloat = 13
 
     var isGood: Bool {
         if isPositiveGood {
@@ -2144,20 +2169,19 @@ struct EconomicIndicator: View {
     var body: some View {
         VStack(spacing: 4) {
             Text(label)
-                .font(.caption2)
+                .font(.system(size: labelSize))
                 .foregroundColor(.secondary)
                 .help(tooltip)
 
             HStack(spacing: 4) {
                 Text(String(format: format, value))
-                    .font(.subheadline)
-                    .fontWeight(.medium)
+                    .font(.system(size: valueSize, weight: .medium))
                     .foregroundColor(isGood ? .primary : .danger)
 
                 if trend != 0 {
                     let goodTrend: Bool = isPositiveGood ? trend > 0 : trend < 0
                     Image(systemName: trend > 0 ? "arrow.up.right" : "arrow.down.right")
-                        .font(.caption2)
+                        .font(.system(size: labelSize))
                         .foregroundColor(goodTrend ? .positive : .danger)
                 }
             }
@@ -2183,6 +2207,7 @@ struct EconomicIndicator: View {
 /// between player action and systemic outcome. GDD Section 12.1 Priority 2.
 struct ConsequenceRow: View {
     let consequence: EventConsequence
+    @ScaledMetric private var captionSize: CGFloat = 10
 
     private var deltaColor: Color {
         if consequence.delta > 0 { return .positive }
@@ -2199,18 +2224,18 @@ struct ConsequenceRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 6) {
             Text(humanReadableKey(consequence.affectedArea))
-                .font(.caption2)
+                .font(.system(size: captionSize))
                 .foregroundColor(.secondary)
                 .frame(minWidth: 70, alignment: .leading)
 
             Text(deltaSign)
-                .font(.caption2)
+                .font(.system(size: captionSize))
                 .fontWeight(.medium)
                 .foregroundColor(deltaColor)
                 .frame(minWidth: 30, alignment: .trailing)
 
             Text(consequence.narrative)
-                .font(.caption2)
+                .font(.system(size: captionSize))
                 .foregroundColor(.secondary)
                 .lineLimit(2)
         }
@@ -2225,12 +2250,14 @@ struct NewsTickerView: View {
     let text: String
     let trendingTopic: String
     @State private var offset: CGFloat = 0
+    @ScaledMetric private var caption2Size: CGFloat = 10
+    @ScaledMetric private var captionSize: CGFloat = 12
 
     var body: some View {
         GeometryReader { geometry in
             HStack(spacing: 0) {
                 Text("LIVE")
-                    .font(.caption2)
+                    .font(.system(size: caption2Size))
                     .fontWeight(.bold)
                     .foregroundColor(.white)
                     .padding(.horizontal, 6)
@@ -2239,16 +2266,16 @@ struct NewsTickerView: View {
                     .cornerRadius(2)
 
                 Text(text)
-                    .font(.caption)
+                    .font(.system(size: captionSize))
                     .foregroundColor(.secondary)
                     .lineLimit(1)
 
                 Text("  •  ")
-                    .font(.caption)
+                    .font(.system(size: captionSize))
                     .foregroundColor(.secondary)
 
                 Text(trendingTopic)
-                    .font(.caption)
+                    .font(.system(size: captionSize))
                     .foregroundColor(.secondary)
                     .lineLimit(1)
             }
@@ -2381,6 +2408,7 @@ struct EventDetailView: View {
 struct NewGameView: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var engine: SimulationEngine
+    @ScaledMetric private var titleSize: CGFloat = 28
 
     @State private var candidateName = ""
     @State private var selectedParty: PoliticalParty = .democrat
@@ -2395,7 +2423,7 @@ struct NewGameView: View {
     var body: some View {
         VStack(spacing: 20) {
             Text("New Game")
-                .font(.title)
+                .font(.system(size: titleSize))
 
             Form {
                 TextField("Candidate Name", text: $candidateName)
@@ -2627,6 +2655,7 @@ struct APIKeySetupView: View {
 struct CommandCenterView: View {
     @EnvironmentObject var engine: SimulationEngine
     @Environment(\.dismiss) var dismiss
+    @ScaledMetric private var title2Size: CGFloat = 18
     @State private var selectedCategory: ActionCategory?
 
     // Speech editing state
@@ -2644,7 +2673,7 @@ struct CommandCenterView: View {
             // Header
             HStack {
                 Text("Command Center")
-                    .font(.title2)
+                    .font(.system(size: title2Size))
                     .fontWeight(.bold)
 
                 Spacer()
@@ -2826,6 +2855,8 @@ struct ResourcePill: View {
     let label: String
     let value: String
     let color: Color
+    @ScaledMetric private var caption2Size: CGFloat = 10
+    @ScaledMetric private var captionSize: CGFloat = 12
 
     var body: some View {
         HStack(spacing: 6) {
@@ -2834,11 +2865,11 @@ struct ResourcePill: View {
                 .font(.caption)
             VStack(alignment: .leading, spacing: 0) {
                 Text(label)
-                    .font(.caption2)
+                    .font(.system(size: caption2Size))
                     .foregroundColor(.secondary)
                     .help(resourceTooltip)
                 Text(value)
-                    .font(.caption)
+                    .font(.system(size: captionSize))
                     .fontWeight(.medium)
             }
         }
@@ -2862,6 +2893,7 @@ struct CategoryTab: View {
     let category: ActionCategory
     let isSelected: Bool
     let action: () -> Void
+    @ScaledMetric private var captionSize: CGFloat = 12
 
     var body: some View {
         Button(action: action) {
@@ -2869,7 +2901,7 @@ struct CategoryTab: View {
                 Image(systemName: categoryIcon)
                     .font(.caption)
                 Text(category.rawValue)
-                    .font(.caption)
+                    .font(.system(size: captionSize))
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
@@ -3161,6 +3193,9 @@ struct ActionCard: View {
 struct BriefingsView: View {
     @EnvironmentObject var engine: SimulationEngine
     @Environment(\.dismiss) var dismiss
+    @ScaledMetric private var title2Size: CGFloat = 18
+    @ScaledMetric private var headlineSize: CGFloat = 17
+    @ScaledMetric private var captionSize: CGFloat = 12
     @State private var selectedBriefing: Briefing?
 
     private var briefings: [Briefing] {
@@ -3172,7 +3207,7 @@ struct BriefingsView: View {
             // Header
             HStack {
                 Text("Presidential Briefings")
-                    .font(.title2)
+                    .font(.system(size: title2Size))
                     .fontWeight(.bold)
 
                 Spacer()
@@ -3195,9 +3230,9 @@ struct BriefingsView: View {
                         .font(.system(size: 48))
                         .foregroundColor(.secondary)
                     Text("No Briefings")
-                        .font(.headline)
+                        .font(.system(size: headlineSize))
                     Text("Your intelligence team has no urgent items at this time.")
-                        .font(.caption)
+                        .font(.system(size: captionSize))
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -3229,6 +3264,9 @@ struct BriefingsView: View {
 struct BriefingCard: View {
     let briefing: Briefing
     let onTap: () -> Void
+    @ScaledMetric private var subheadlineSize: CGFloat = 15
+    @ScaledMetric private var captionSize: CGFloat = 12
+    @ScaledMetric private var caption2Size: CGFloat = 10
 
     var body: some View {
         Button(action: onTap) {
@@ -3241,7 +3279,7 @@ struct BriefingCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack {
                         Text(briefing.title)
-                            .font(.subheadline)
+                            .font(.system(size: subheadlineSize))
                             .fontWeight(briefing.isRead ? .regular : .semibold)
                             .foregroundColor(.primary)
 
@@ -3253,13 +3291,13 @@ struct BriefingCard: View {
                     }
 
                     Text(briefing.summary)
-                        .font(.caption)
+                        .font(.system(size: captionSize))
                         .foregroundColor(.secondary)
                         .lineLimit(2)
 
                     HStack {
                         Text(briefing.type.rawValue)
-                            .font(.caption2)
+                            .font(.system(size: caption2Size))
                             .foregroundColor(.secondary)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -3268,7 +3306,7 @@ struct BriefingCard: View {
 
                         if let deadline = briefing.deadline {
                             Text("Due: Turn \(deadline)")
-                                .font(.caption2)
+                                .font(.system(size: caption2Size))
                                 .foregroundColor(.tossupAccent)
                         }
                     }
@@ -3305,6 +3343,7 @@ struct BriefingCard: View {
 struct SaveLoadView: View {
     @ObservedObject var engine: SimulationEngine
     @Environment(\.dismiss) var dismiss
+    @ScaledMetric private var headlineSize: CGFloat = 17
     @State private var saves: [SaveMetadata] = []
     @State private var showLoadError = false
     @State private var loadErrorMessage = ""
@@ -3316,7 +3355,7 @@ struct SaveLoadView: View {
             // Header
             HStack {
                 Text("Save / Load Game")
-                    .font(.headline)
+                    .font(.system(size: headlineSize))
                 Spacer()
                 Button("Done") {
                     dismiss()
@@ -3333,7 +3372,7 @@ struct SaveLoadView: View {
                 // Save Tab
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Save Current Game")
-                        .font(.headline)
+                        .font(.system(size: headlineSize))
 
                     TextField("Save name (optional)", text: $saveName)
                         .textFieldStyle(.roundedBorder)
@@ -3356,7 +3395,7 @@ struct SaveLoadView: View {
                 // Load Tab
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Load Saved Game")
-                        .font(.headline)
+                        .font(.system(size: headlineSize))
 
                     if saves.isEmpty {
                         VStack {
