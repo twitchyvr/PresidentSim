@@ -21,7 +21,13 @@ jobs:
         run: xcodegen generate
 
       - name: Fix project format for Xcode 15.4 compatibility
-        run: sed -i '' 's/objectVersion = 77/objectVersion = 56/' PresidentSim.xcodeproj/project.pbxproj
+        run: |
+          # Find the generated .xcodeproj (works whether it's at root or in PresidentSim/ subdir)
+          PROJECT_DIR=$(find . -name "PresidentSim.xcodeproj" -type d | head -1)
+          echo "Fixing project at: $PROJECT_DIR"
+          sed -i '' 's/objectVersion = 77/objectVersion = 56/' "$PROJECT_DIR/project.pbxproj"
 
       - name: Build
-        run: xcodebuild -project PresidentSim.xcodeproj -scheme PresidentSim -configuration Debug build CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO
+        run: |
+          PROJECT_DIR=$(find . -name "PresidentSim.xcodeproj" -type d | head -1)
+          xcodebuild -project "$PROJECT_DIR" -scheme PresidentSim -configuration Debug build CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO
