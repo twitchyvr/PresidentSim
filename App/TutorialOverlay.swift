@@ -26,6 +26,7 @@ struct TutorialOverlay: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundColor(.secondary)
+                    .accessibilityIdentifier("tutorial.skip")
                 }
                 .padding()
                 .background(Color(NSColor.controlBackgroundColor))
@@ -100,6 +101,7 @@ struct TutorialOverview: View {
                             .cornerRadius(8)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityIdentifier("tutorial.topic.\(topic.rawValue)")
                     }
                 }
             }
@@ -123,6 +125,7 @@ struct TutorialTopicView: View {
             }
             .buttonStyle(.plain)
             .foregroundColor(.playerAccent)
+            .accessibilityIdentifier("tutorial.back")
 
             Text(topic.title)
                 .font(.title2)
@@ -457,6 +460,7 @@ struct GuidedTourView: View {
                             }
                         }
                         .buttonStyle(.bordered)
+                        .accessibilityIdentifier("guidedTour.previous")
                     }
 
                     Button(currentPhaseIndex == GuidedTour.phases.count - 1 ? "Get Started" : "Next") {
@@ -471,12 +475,13 @@ struct GuidedTourView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("guidedTour.next")
                 }
             } else {
                 VStack(spacing: 16) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 50))
-                        .foregroundColor(.green)
+                        .foregroundColor(.positive)
 
                     Text("You're Ready!")
                         .font(.title)
@@ -538,6 +543,7 @@ struct ContextualHelpButton: View {
             Image(systemName: "questionmark.circle")
                 .font(.title3)
         }
+        .accessibilityIdentifier("help.contextual")
         .popover(isPresented: $showHelp, arrowEdge: .bottom) {
             Text("Need help? Click 'How to Play' in the menu bar for guidance.")
                 .padding()
