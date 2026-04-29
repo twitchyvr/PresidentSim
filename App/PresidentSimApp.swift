@@ -263,7 +263,7 @@ struct ContentView: View {
                 ("Interview Request", "Major network requests exclusive interview.", ["Accept", "Decline", "Offer surrogate"]),
             ],
             .administrative: [
-                ("Transition Update", "Transition team reports on preparation进度.", ["Review report", "Schedule briefing", "Delegate"]),
+                ("Transition Update", "Transition team reports on preparation progress.", ["Review report", "Schedule briefing", "Delegate"]),
             ]
         ]
 
