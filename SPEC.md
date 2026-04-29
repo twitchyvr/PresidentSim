@@ -207,7 +207,7 @@ Congress members, foreign leaders, donors — AI models their likely responses.
 - [x] Speech generation (MiniMax AI drafts speeches via SpeechEditorSheet + generateAISpeech)
 - [x] NPC behavior modeling (MiniMax AI models Congress/donor/media/foreign leader reactions after actions)
 
-### Phase 4: Polish (in progress)
+### Phase 4: Polish ✅
 - [x] Electoral map with 50 states and EV counting
 - [x] Approval trend chart (last 20 turns)
 - [x] Political capital gauge
@@ -215,4 +215,4 @@ Congress members, foreign leaders, donors — AI models their likely responses.
 - [x] Briefings inbox system
 - [x] Persistence - Save/load game state
 - [x] Speech synthesis - SpeechService wired to "Make Speech" action (TTS playback)
-- [ ] Replayability features (TODO)
+- [x] Replayability features (Start New Game in ExitedView resets state and opens candidate setup)
