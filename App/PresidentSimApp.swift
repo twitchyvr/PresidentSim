@@ -1724,9 +1724,10 @@ struct EconomicIndicator: View {
                     .foregroundColor(isGood ? .primary : .red)
 
                 if trend != 0 {
+                    let goodTrend: Bool = isPositiveGood ? trend > 0 : trend < 0
                     Image(systemName: trend > 0 ? "arrow.up.right" : "arrow.down.right")
                         .font(.caption2)
-                        .foregroundColor(trend > 0 ? .green : .red)
+                        .foregroundColor(goodTrend ? .green : .red)
                 }
             }
         }
