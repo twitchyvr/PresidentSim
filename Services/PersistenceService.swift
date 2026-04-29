@@ -9,7 +9,13 @@ class PersistenceService {
     private let decoder = JSONDecoder()
 
     init() {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            // Fallback to Documents directory if Application Support is unavailable
+            let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+            saveDirectory = documents.appendingPathComponent("PresidentSim/Saves", isDirectory: true)
+            try? FileManager.default.createDirectory(at: saveDirectory, withIntermediateDirectories: true)
+            return
+        }
         saveDirectory = appSupport.appendingPathComponent("PresidentSim/Saves", isDirectory: true)
 
         try? FileManager.default.createDirectory(at: saveDirectory, withIntermediateDirectories: true)
