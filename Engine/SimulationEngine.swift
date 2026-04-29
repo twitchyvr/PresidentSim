@@ -98,7 +98,12 @@ class SimulationEngine: ObservableObject {
             gameState.resources.approvalHistory.removeFirst()
         }
 
-        // 5. Resolve old events (remove after 10 turns, mark resolved after 5)
+        // 5. Sync electoral votes from polling data (general election only)
+        if gameState.phase == .generalElection {
+            updateElectoralVotesFromPolling()
+        }
+
+        // 6. Resolve old events (remove after 10 turns, mark resolved after 5)
         resolveOldEvents()
 
         // 6. Check for phase transitions
@@ -443,6 +448,33 @@ class SimulationEngine: ObservableObject {
         }
     }
 
+    private func updateElectoralVotesFromPolling() {
+        // Standard state polling thresholds (simplified model)
+        let stateEVs: [String: Int] = [
+            "CA": 54, "TX": 40, "FL": 30, "NY": 28, "PA": 19, "IL": 19,
+            "OH": 17, "GA": 16, "NC": 16, "MI": 15, "NJ": 14, "VA": 13,
+            "WA": 12, "AZ": 11, "IN": 11, "MO": 10, "MD": 10, "WI": 10,
+            "CO": 10, "MN": 10, "SC": 9, "AL": 9, "LA": 8, "KY": 8,
+            "OR": 8, "OK": 7, "CT": 7, "UT": 6, "IA": 6, "NV": 6,
+            "AR": 6, "MS": 6, "KS": 6, "NM": 5, "NE": 5, "ID": 4,
+            "WV": 4, "HI": 4, "ME": 4, "NH": 4, "RI": 4, "MT": 3,
+            "DE": 3, "SD": 3, "ND": 3, "AK": 3, "VT": 3, "WY": 3,
+            "DC": 3
+        ]
+
+        var playerEVs = 0
+        for (state, ev) in stateEVs {
+            let polling = gameState.pollingData[state] ?? 50.0
+            let margin = polling - 50.0
+            // Player wins state if polling > opponent by 5+ points
+            if margin > 5 {
+                playerEVs += ev
+            }
+        }
+
+        gameState.electoralVotes = playerEVs
+    }
+
     private func checkPhaseTransition() {
         switch gameState.phase {
         case .campaign:
@@ -456,6 +488,7 @@ class SimulationEngine: ObservableObject {
             }
         case .generalElection:
             // Auto-win if electoral votes >= 270
+            // Note: electoralVotes is synced from UI's computed playerEVs
             if gameState.electoralVotes >= 270 {
                 gameState.transitionToNextPhase()
             }
@@ -471,11 +504,15 @@ class SimulationEngine: ObservableObject {
     }
 
     private func checkGameEndConditions() {
-        // Lost election
+        // Lost election: opponent reaches 270 or turn limit exceeded
         if gameState.phase == .generalElection {
-            if gameState.electoralVotes < 270 && gameState.world.currentTurn > 100 {
+            // Opponent wins if player hasn't won and opponent has 270+ EVs
+            // We compute opponent EVs as 538 - playerEVs - tossup EVs (approximate)
+            let opponentEVs = 538 - gameState.electoralVotes
+            if gameState.electoralVotes < 270 && opponentEVs >= 270 {
                 gameState.phase = .exited
                 gameState.exitType = .lostElection
+                gameState.world.currentNarrative = "Your opponent has reached 270 electoral votes. You have lost the election."
             }
         }
 
